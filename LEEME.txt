@@ -1,0 +1,23 @@
+APP POLAR — Correcciones 15 septiembre 2026
+
+Cambios:
+- Merienda corresponde a mam (mañana) y Once a mpm (tarde), en selector, configuración, historial e informes. Se conservan los identificadores y ratios de cada horario.
+- La configuración local se carga antes de contactar al servidor. Un fallo de red no cierra la sesión ni borra los datos locales durante el arranque.
+- Guardado local y cola de sincronización de configuración por usuario. Un error de sincronización conserva el cambio pendiente; se reintenta al volver la conexión o abrir la app.
+- Biblioteca Supabase incluida localmente y caché de la app independiente de fuentes y exportador PDF externos.
+- Corregida la actualización de nombres y ratios del selector y la lectura del campo de ratio de almuerzo.
+
+Instalación:
+1. Guardar una copia de la versión publicada.
+2. Reemplazar los archivos del sitio por los de esta carpeta, usando estos nombres exactos: index.html, app.js, sw.js, manifest.json, styles.css, polar-logo.png, supabase.js.
+3. Mantener el MISMO dominio y ruta de la app. La configuración guardada pertenece al navegador y origen actuales; no se transfiere al abrir otro sitio o borrar sus datos.
+4. Abrir la app con internet, cerrar y volver a abrir para completar la actualización. Confirmar los valores personales en Configuración. Después probar en modo avión.
+5. No borrar los datos de la app ni desinstalarla para actualizar. La primera carga requiere conexión para instalar el caché. Servir por HTTPS (o localhost para pruebas).
+
+Verificación realizada:
+- Sintaxis JavaScript de app y service worker.
+- Pruebas automatizadas con navegador simulado: inicio sin conexión y con servidor que no responde; preservación de ratios y factores personalizados; nombres correctos; persistencia de configuración; sincronización exitosa, fallida y separación por usuario.
+- No se probó con una cuenta real, teléfono real ni se publicó en el sitio de producción. Verificar en el dispositivo antes de uso habitual.
+- Exportación PDF y fuentes externas pueden requerir conexión si no se habían descargado.
+
+Referencia técnica de sincronización: https://supabase.com/docs/reference/javascript/auth-updateuser
