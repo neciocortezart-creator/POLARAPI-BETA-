@@ -18,7 +18,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- ESTILOS -->
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=7">
 
   <style>
     /* Área táctil amplia y respuesta instantánea al toque en iPhone */
@@ -84,7 +84,7 @@
       <div class="icon-24">
         <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><path d="M 30 20 L 70 20 M 30 50 L 70 50 M 30 80 L 70 80 M 30 20 L 30 80 M 70 20 L 70 80" fill="none" stroke="#2C3A40" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="30" cy="20" r="8" fill="#FF5A4D"/><circle cx="70" cy="20" r="8" fill="#FCA311"/><circle cx="30" cy="50" r="8" fill="#FFFFFF" stroke="#2C3A40" stroke-width="2"/><circle cx="70" cy="50" r="8" fill="#D84B79"/><circle cx="30" cy="80" r="8" fill="#4B6584"/><circle cx="70" cy="80" r="8" fill="#FFFFFF" stroke="#2C3A40" stroke-width="2"/></svg>
       </div>
-      Guardados
+      Registros
     </button>
 
     <div class="rules-menu">
@@ -120,10 +120,10 @@
     <!-- CALCULADORA PRINCIPAL CON FORMULARIO -->
     <form class="grid" id="main-calculator" onsubmit="event.preventDefault(); document.activeElement && document.activeElement.blur(); calcular(false); return false;">
       <div class="card card-meal card-full">
-        <label for="comida" style="color: var(--turquoise-strong); font-weight: 900; font-size: 20px;">Agregar comida</label>
+        <label for="comida" style="color: var(--turquoise-strong); font-weight: 900; font-size: 20px;">Tu próxima comida</label>
         <select id="comida" onchange="actualizarTextosComida(); this.dataset.manual = 'true'; calcular(false);">
           <option value="desayuno">DESAYUNO</option>
-          <option value="mam">MERIENDA</option>
+          <option value="mam">COLACIÓN</option>
           <option value="almuerzo">ALMUERZO</option>
           <option value="mpm">ONCE</option>
           <option value="cena">CENA</option>
@@ -132,7 +132,7 @@
       </div>
 
       <div class="card card-glucose">
-        <label for="glucosa" style="color: inherit; font-size: 17px;">Nivel de Energía</label>
+        <label for="glucosa" style="color: inherit; font-size: 17px;">Glucosa (mg/dL)</label>
         <input type="number" id="glucosa" placeholder="Ej: 110" inputmode="numeric" enterkeyhint="next"
                oninput="dormirPolar(); autoFocoCarbos()" 
                onfocus="document.getElementById('resultado').style.display='none';" 
@@ -158,6 +158,16 @@
 
       <!-- BOTÓN DIRECTO DE CÁLCULO -->
       <button type="submit" class="btn-main card-full" style="margin-top: 4px;">Calcular Dosis</button>
+      <details class="note-composer card-full" ontoggle="if(this.open) actualizarComidaNota()">
+        <summary>＋ Agregar nota</summary>
+        <div class="note-fields">
+          <p class="note-context">Nota para <strong id="nota-comida-nombre">Desayuno</strong></p>
+          <label for="nota-texto">Motivo o comentario</label>
+          <textarea id="nota-texto" rows="2" maxlength="2000" placeholder="Ej.: No comió porque no tenía apetito."></textarea>
+          <button type="button" class="btn-save" onclick="guardarNota()">Guardar nota</button>
+          <p id="nota-estado" role="status" aria-live="polite"></p>
+        </div>
+      </details>
     </form>
 
     <!-- VENTANA MODAL DE RESULTADO: FUERA DEL FORMULARIO -->
@@ -233,7 +243,7 @@
              <div class="icon-26">
                <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><path d="M 30 20 L 70 20 M 30 50 L 70 50 M 30 80 L 70 80 M 30 20 L 30 80 M 70 20 L 70 80" fill="none" stroke="#2C3A40" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="30" cy="20" r="8" fill="#FF5A4D"/><circle cx="70" cy="20" r="8" fill="#FCA311"/><circle cx="30" cy="50" r="8" fill="#FFFFFF" stroke="#2C3A40" stroke-width="2"/><circle cx="70" cy="50" r="8" fill="#D84B79"/><circle cx="30" cy="80" r="8" fill="#4B6584"/><circle cx="70" cy="80" r="8" fill="#FFFFFF" stroke="#2C3A40" stroke-width="2"/></svg>
              </div>
-             Guardados
+             Registros
           </div>
         </h3>
         <button class="btn-save" style="background: #FFD60A; color: #1A1A1A; margin-bottom: 18px; font-weight: 900; box-shadow: 0 4px 15px rgba(255,214,10,0.2);" onclick="sugerirEsquema()">Ver Sugerencia de Esquema</button>
@@ -269,6 +279,7 @@
     </div>
 
     <div id="view-config" style="display: none;">
+      <p id="estado-conexion" role="status" class="field-help"></p>
       <div class="card card-settings card-full" id="panel-config" style="display: block;">
         <h3 class="panel-header-small">
           <div class="title-flex">
@@ -292,10 +303,10 @@
         </div>
 
         <!-- CASILLAS DE FACTORES DE CORRECCIÓN INDIVIDUALES -->
-        <h3 style="color: var(--turquoise-strong); font-size: 15px; margin-top: 10px; margin-bottom: 8px;">Factores de Corrección (1U baja X mg/dL)</h3>
+        <h3 style="color: var(--card-text); font-size: 15px; margin-top: 10px; margin-bottom: 8px;">Factores de Corrección (1U baja X mg/dL)</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
           <div><label>FC Desayuno</label><input type="number" id="cfg-fc-desayuno" value="30" inputmode="numeric"></div>
-          <div><label>FC Merienda</label><input type="number" id="cfg-fc-mam" value="30" inputmode="numeric"></div>
+          <div><label>FC Colación</label><input type="number" id="cfg-fc-mam" value="30" inputmode="numeric"></div>
           <div><label>FC Almuerzo</label><input type="number" id="cfg-fc-alm" value="30" inputmode="numeric"></div>
           <div><label>FC Once</label><input type="number" id="cfg-fc-mpm" value="30" inputmode="numeric"></div>
           <div><label>FC Cena</label><input type="number" id="cfg-fc-cena" value="30" inputmode="numeric"></div>
@@ -308,13 +319,13 @@
           <div><label>Corrección</label><input type="number" id="cfg-meta-cor" value="150" inputmode="numeric"></div>
         </div>
         
-        <h3>Ratios (Por 1U)</h3>
+        <h3>Ratios (Por 1U)</h3><p class="field-help">Un ratio de 0 oculta esa comida del inicio. Puedes volver a activarla aquí cuando la necesites.</p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-          <div><label>Desayuno</label><input type="number" id="cfg-r-desayuno" value="4" inputmode="numeric" onchange="actualizarTextosComida()"></div>
-          <div><label>Merienda</label><input type="number" id="cfg-r-mam" value="0" inputmode="numeric" onchange="actualizarTextosComida()"></div>
-          <div><label>Almuerzo</label><input type="number" id="cfg-r-alm" value="5" inputmode="numeric" onchange="actualizarTextosComida()"></div>
-          <div><label>Once</label><input type="number" id="cfg-r-mpm" value="5" inputmode="numeric" onchange="actualizarTextosComida()"></div>
-          <div style="grid-column: span 2;"><label>Cena</label><input type="number" id="cfg-r-cena" value="14" inputmode="numeric" onchange="actualizarTextosComida()"></div>
+          <div><label>Desayuno</label><input type="number" id="cfg-r-desayuno" value="4" inputmode="numeric" min="0" step="any"></div>
+          <div><label>Colación</label><input type="number" id="cfg-r-mam" value="0" inputmode="numeric" min="0" step="any"></div>
+          <div><label>Almuerzo</label><input type="number" id="cfg-r-alm" value="5" inputmode="numeric" min="0" step="any"></div>
+          <div><label>Once</label><input type="number" id="cfg-r-mpm" value="5" inputmode="numeric" min="0" step="any"></div>
+          <div style="grid-column: span 2;"><label>Cena</label><input type="number" id="cfg-r-cena" value="14" inputmode="numeric" min="0" step="any"></div>
         </div>
 
         <select id="cfg-tema" onchange="cambiarTema()" style="margin-top: 12px; margin-bottom: 12px; font-weight: 800;">
@@ -338,7 +349,7 @@
         <label>Ambulancia</label><input type="tel" id="cfg-tel-emergencia" value="131" class="input-emergencia bg-rojo-alerta">
         <label>Teléfono Familia</label><input type="tel" id="cfg-tel-papa" value="973808283" class="input-emergencia bg-blanco-sombra">
         
-        <button id="btn-guardar-config" class="btn-accent" style="margin-top: 10px; background: var(--turquoise-strong); padding: 12px; font-size: 16px; border-radius: 12px;" onclick="guardarConfig()">Guardar Todo</button>
+        <button id="btn-guardar-config" class="btn-accent" style="margin-top: 10px; background: var(--turquoise-strong); color: var(--btn-text); padding: 12px; font-size: 16px; border-radius: 12px;" onclick="guardarConfig()">Guardar Todo</button>
       </div>
     </div>
 
@@ -395,8 +406,7 @@
 </div>
 
 <!-- LÓGICA DE LA APP -->
-<p id="estado-conexion" role="status" style="text-align:center;font-size:12px;padding:8px 16px 85px"></p>
-<script src="app.js"></script>
+<script src="app.js?v=7"></script>
 
 <!-- CIERRE INMEDIATO Y DESENFOQUE PROFESIONAL -->
 <script>

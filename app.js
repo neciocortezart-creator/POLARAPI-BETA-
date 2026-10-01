@@ -3,7 +3,6 @@ const supabaseUrl = 'https://rgwawwdldqodzmsizean.supabase.co';
 const supabaseKey = 'sb_publishable_-4Q07zNvB5Ep9fLwIZW6Yw_axmOPTM7';
 const polarDb = createClient(supabaseUrl, supabaseKey);
 
-
 function persistirConfigLocal() {
   const valor = JSON.stringify(config);
   localStorage.setItem('polar_config', valor);
@@ -141,11 +140,12 @@ function actualizarRadar() {
       return;
   }
 
-  const dict = { 'desayuno': 'Desayuno', 'mam': 'Merienda', 'almuerzo': 'Almuerzo', 'mpm': 'Once', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
+  const dict = { 'desayuno': 'Desayuno', 'mam': 'Colación', 'almuerzo': 'Almuerzo', 'mpm': 'Once', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
 
   listaRadar.innerHTML = ultimosTres.map(reg => {
+      if (reg.nota) return tarjetaNota(reg);
       const nombreComida = dict[reg.tipoComida] || 'Manual';
-      const hora = reg.fecha.split(', ') || reg.fecha;
+      const hora = reg.fecha.split(', ')[1] || reg.fecha;
       let colorGlucosa = 'var(--text-primary)';
       if(reg.glucosa < 70) colorGlucosa = '#FF3B30';
       else if(reg.glucosa > 180) colorGlucosa = '#FF9F0A';
@@ -193,7 +193,8 @@ async function sincronizarDatosNube() {
       const d = new Date(dbItem.created_at);
       return {
         fecha: d.toLocaleString('es-CL'),
-        iso: d.toISOString().split('T')[0],
+        iso: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+        id: dbItem.id, clientId: dbItem.client_id, nota: dbItem.nota || null,
         dosis: dbItem.dosis,
         glucosa: dbItem.glucosa,
         carbos: dbItem.carbos,
@@ -202,7 +203,13 @@ async function sincronizarDatosNube() {
       };
     });
 
-    localStorage.setItem('historial_polar', JSON.stringify(historialDescargado));
+    // Keep local entries not yet represented in the cloud, including offline notes.
+    const locales = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+    const combinados = historialDescargado.concat(locales.filter(item => !historialDescargado.some(remote =>
+      item.clientId ? remote.clientId === item.clientId : item.id ? remote.id === item.id :
+      remote.tipoComida === item.tipoComida && Number(remote.glucosa) === Number(item.glucosa) && Number(remote.carbos) === Number(item.carbos) && Number(remote.dosis) === Number(item.dosis) && Math.abs(remote.timestamp - item.timestamp) < 60000
+    ))).sort((a,b) => a.timestamp - b.timestamp);
+    localStorage.setItem('historial_polar', JSON.stringify(combinados));
 
     if (typeof renderGraficoPicos === 'function') renderGraficoPicos();
     if (document.getElementById('view-historial').style.display === 'block') {
@@ -212,14 +219,28 @@ async function sincronizarDatosNube() {
   }
 }
 
-async function procesarColaOffline() {
-  if(!navigator.onLine) return;
-  let cola = JSON.parse(localStorage.getItem('polar_cola_sync') || '[]');
-  if(cola.length === 0) return;
-  
-  const { error } = await polarDb.from('historial_polar').insert(cola);
-  if(!error) {
-     localStorage.removeItem('polar_cola_sync');
+let sincronizacionEnCurso = null;
+function procesarColaOffline() {
+  if (sincronizacionEnCurso) return sincronizacionEnCurso;
+  sincronizacionEnCurso = enviarPendientesPolar().finally(() => { sincronizacionEnCurso = null; });
+  return sincronizacionEnCurso;
+}
+async function enviarPendientesPolar() {
+  const userId = localStorage.getItem('polar_user_id');
+  if (!navigator.onLine || !userId) return;
+  const pendientes = JSON.parse(localStorage.getItem('polar_cola_sync') || '[]').filter(row => row.paciente_id === userId);
+  for (const row of pendientes) {
+    try {
+      const query = polarDb.from('historial_polar');
+      const { error } = row.client_id
+        ? await query.upsert(row, { onConflict: 'client_id', ignoreDuplicates: true })
+        : await query.insert(row);
+      if (error) { console.warn('Registro pendiente de sincronización:', error.message); return; }
+      const cola = JSON.parse(localStorage.getItem('polar_cola_sync') || '[]');
+      const index = cola.findIndex(item => row.client_id ? item.client_id === row.client_id : JSON.stringify(item) === JSON.stringify(row));
+      if (index >= 0) cola.splice(index, 1);
+      localStorage.setItem('polar_cola_sync', JSON.stringify(cola));
+    } catch (error) { return; }
   }
 }
 window.addEventListener('online', iniciarConexion);
@@ -449,7 +470,7 @@ function renderBarrasPorcentaje() {
         return new Date(item.iso + 'T00:00:00').getTime();
     };
 
-    const historialFiltrado = historialCompleto.filter(item => parseItemTime(item) >= tiempoLimite);
+    const historialFiltrado = historialCompleto.filter(item => !item.nota && item.glucosa != null && parseItemTime(item) >= tiempoLimite);
 
     let n70 = 0, n180 = 0, n240 = 0, nMas240 = 0, total = 0;
     historialFiltrado.forEach(d => {
@@ -553,7 +574,7 @@ function renderDesgloseComidas(historialFiltrado, textCol) {
         return;
     }
 
-    const nombres = { desayuno: 'Desayuno', mam: 'Merienda', almuerzo: 'Almuerzo', mpm: 'Once', cena: 'Cena' };
+    const nombres = { desayuno: 'Desayuno', mam: 'Colación', almuerzo: 'Almuerzo', mpm: 'Once', cena: 'Cena' };
     const colores = { desayuno: '#FCA311', mam: '#D84B79', almuerzo: '#4CAF50', mpm: '#5B9BD5', cena: '#A35496' };
 
     let html = `<h4 style="font-size: 15px; color: var(--turquoise-strong); margin-bottom: 12px; font-weight: 900;">Promedio de Energía por Comida</h4>`;
@@ -605,17 +626,18 @@ function buscarDiaEspecifico() {
         return;
     }
 
-    const dictNombres = { 'desayuno': 'Desayuno', 'mam': 'Merienda', 'almuerzo': 'Almuerzo', 'mpm': 'Once', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
+    const dictNombres = { 'desayuno': 'Desayuno', 'mam': 'Colación', 'almuerzo': 'Almuerzo', 'mpm': 'Once', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
     const dictColores = { 'desayuno': '#FCA311', 'mam': '#D84B79', 'almuerzo': '#4CAF50', 'mpm': '#5B9BD5', 'cena': '#A35496', 'corroborar': '#2C3A40', 'post-comida': '#088387' };
 
     const partesFecha = fechaSeleccionada.split('-');
-    const fechaLimpia = `${partesFecha}/${partesFecha}/${partesFecha[0]}`;
+    const fechaLimpia = `${partesFecha[2]}/${partesFecha[1]}/${partesFecha[0]}`;
 
     let html = `<h4 style="font-size: 15px; font-weight: 900; color: var(--text-primary); margin-bottom: 12px; text-align: center; border-bottom: 1px dashed rgba(0,0,0,0.1); padding-bottom: 8px;">Auditoría del ${fechaLimpia}</h4>`;
 
     registrosDelDia.sort((a, b) => a.timestamp - b.timestamp);
 
     registrosDelDia.forEach(reg => {
+        if (reg.nota) { html += tarjetaNota(reg); return; }
         const nombreComida = dictNombres[reg.tipoComida] || 'Manual';
         const colorEtiqueta = dictColores[reg.tipoComida] || '#2C3A40';
         
@@ -624,7 +646,7 @@ function buscarDiaEspecifico() {
         else if(reg.glucosa > 180) colorGlucosa = '#FF9F0A';
         else colorGlucosa = '#4CAF50';
 
-        const horaRegistro = reg.fecha.split(', ') || '-';
+        const horaRegistro = reg.fecha.split(', ')[1] || reg.fecha;
 
         html += `
         <div style="background: var(--white); border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border-left: 5px solid ${colorEtiqueta};">
@@ -1075,8 +1097,8 @@ function generarPDFElite() {
       <h3 style="color: #088387; margin-bottom: 12px; font-size: 18px; margin-top:0; font-weight: 900;">Esquema Médico Actual</h3>
       <ul style="font-size: 14px; line-height: 1.6; list-style: none; padding: 0; margin: 0; font-weight: 700;">
         <li><strong>Basal (Toujeo):</strong> ${config.toujeo} U</li>
-        <li><strong>Factores de Corrección:</strong> Des: ${config.fc.desayuno} | Merienda: ${config.fc.mam} | Alm: ${config.fc.almuerzo} | Once: ${config.fc.mpm} | Cena: ${config.fc.cena} | Rev: ${config.fc.corroborar}</li>
-        <li><strong>Ratios:</strong> Desayuno R${config.ratios.desayuno} | Merienda R${config.ratios.mam} | Almuerzo R${config.ratios.almuerzo} | Once R${config.ratios.mpm} | Cena R${config.ratios.cena}</li>
+        <li><strong>Factores de Corrección:</strong> Desayuno: ${config.fc.desayuno} | Colación: ${config.fc.mam} | Almuerzo: ${config.fc.almuerzo} | Once: ${config.fc.mpm} | Cena: ${config.fc.cena} | Rev: ${config.fc.corroborar}</li>
+        <li><strong>Ratios:</strong> Desayuno R${config.ratios.desayuno} | Colación R${config.ratios.mam} | Almuerzo R${config.ratios.almuerzo} | Once R${config.ratios.mpm} | Cena R${config.ratios.cena}</li>
       </ul>
     </div>`;
 
@@ -1098,9 +1120,10 @@ function generarPDFElite() {
         <tbody>`;
         
       const historialReverso = historial.slice().reverse();
-      const dict = { 'desayuno': 'Desayuno', 'mam': 'Merienda', 'almuerzo': 'Almuerzo', 'mpm': 'Once', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
+      const dict = { 'desayuno': 'Desayuno', 'mam': 'Colación', 'almuerzo': 'Almuerzo', 'mpm': 'Once', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
 
       historialReverso.forEach((item, index) => {
+        if (item.nota) { html += `<tr><td style="padding:12px">${escaparHTML(item.fecha)}</td><td style="padding:12px">${escaparHTML(comidasPolar[item.tipoComida] || (item.tipoComida === 'corroborar' ? 'Corroborar' : 'General'))}</td><td colspan="3" style="padding:12px;white-space:pre-wrap;overflow-wrap:anywhere">Nota: ${escaparHTML(item.nota)}</td></tr>`; return; }
         const bgRow = index % 2 === 0 ? '#FFFFFF' : '#F9F9F9';
         const evento = item.tipoComida ? dict[item.tipoComida] : 'Manual';
         
@@ -1113,7 +1136,7 @@ function generarPDFElite() {
           <td style="padding: 12px; font-weight: 700;">${item.fecha}</td>
           <td style="padding: 12px; font-weight: 700;">${evento}</td>
           <td style="padding: 12px; font-weight: ${pesoGlucosa}; color: ${colorGlucosa};">${item.glucosa || '-'}</td>
-          <td style="padding: 12px; font-weight: 700;">${item.carbos || 0}g</td>
+          <td style="padding: 12px; font-weight: 700;">${item.carbos == null ? 'Sin dato' : escaparHTML(item.carbos) + ' g'}</td>
           <td style="padding: 12px; font-weight: 900; color: #088387;">${item.dosis} U</td>
         </tr>`;
       });
@@ -1125,6 +1148,12 @@ function generarPDFElite() {
 }
 
 async function guardarConfig() {
+  const idsRatios = ['cfg-r-desayuno', 'cfg-r-mam', 'cfg-r-alm', 'cfg-r-mpm', 'cfg-r-cena'];
+  if (idsRatios.some(id => { const valor = document.getElementById(id).value; return valor.trim() === '' || !Number.isFinite(Number(valor)) || Number(valor) < 0; })) {
+    alert('Introduce un ratio de 0 o mayor en cada comida. Usa 0 para ocultarla del inicio.');
+    return;
+  }
+
   config.peso = parseFloat(document.getElementById('cfg-peso').value) || 50;
   config.toujeo = parseFloat(document.getElementById('cfg-toujeo').value) || 0; 
   config.telEmergencia = document.getElementById('cfg-tel-emergencia').value || "131"; 
@@ -1184,12 +1213,14 @@ function actualizarDropdownMetas() {
 function determinarComidaAutomatica() {
   const historial = JSON.parse(localStorage.getItem('historial_polar') || '[]');
   const hoyIso = obtenerFechaLocalISO();
-  const registrosHoy = historial.filter(r => r.iso === hoyIso);
+  const activas = comidasActivas();
+  if (!activas.length) return 'corroborar';
+  const registrosHoy = historial.filter(r => r.iso === hoyIso && !r.nota);
 
-  if (registrosHoy.length === 0) return 'desayuno';
+  if (registrosHoy.length === 0) return activas[0];
 
   const principales = registrosHoy.filter(r => ['desayuno', 'mam', 'almuerzo', 'mpm', 'cena'].includes(r.tipoComida));
-  if (principales.length === 0) return 'desayuno';
+  if (principales.length === 0) return activas[0];
 
   const ultimaPrincipal = principales[principales.length - 1];
   const timestampUltima = ultimaPrincipal.timestamp;
@@ -1200,7 +1231,7 @@ function determinarComidaAutomatica() {
   const horasPasadas = (Date.now() - timestampUltima) / 3600000;
   const secuencia = ['desayuno', 'mam', 'almuerzo', 'mpm', 'cena'];
   const idx = secuencia.indexOf(ultimaPrincipal.tipoComida);
-  const nextMeal = secuencia[(idx + 1) % secuencia.length];
+  const nextMeal = Array.from({length: secuencia.length}, (_,i) => secuencia[(idx+i+1)%secuencia.length]).find(key => activas.includes(key));
 
   if (!yaCorroborado) {
       if (horasPasadas >= 1.98 && horasPasadas <= 3.5) {
@@ -1224,33 +1255,65 @@ function autoSeleccionarComida() {
   }
 }
 
+const comidasPolar = { desayuno: 'Desayuno', mam: 'Colación', almuerzo: 'Almuerzo', mpm: 'Once', cena: 'Cena' };
+function comidasActivas() {
+  return Object.keys(comidasPolar).filter(key => Number(config.ratios[key]) > 0);
+}
+function escaparHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+}
+function tarjetaNota(reg) {
+  return `<article class="historial-registro note-record"><div class="record-heading"><strong>${escaparHTML(comidasPolar[reg.tipoComida] || (reg.tipoComida === 'corroborar' ? 'Corroborar' : 'General'))} · Nota</strong><span>${escaparHTML(reg.fecha)}</span></div><p class="note-text">${escaparHTML(reg.nota)}</p></article>`;
+}
 function actualizarTextosComida() {
-  const s = document.getElementById('comida');
-  const ratioDes = document.getElementById('cfg-r-desayuno') ? document.getElementById('cfg-r-desayuno').value : config.ratios.desayuno;
-  const ratioMam = document.getElementById('cfg-r-mam') ? document.getElementById('cfg-r-mam').value : config.ratios.mam;
-  const ratioAlm = document.getElementById('cfg-r-alm') ? document.getElementById('cfg-r-alm').value : config.ratios.almuerzo;
-  const ratioMpm = document.getElementById('cfg-r-mpm') ? document.getElementById('cfg-r-mpm').value : config.ratios.mpm;
-  const ratioCena = document.getElementById('cfg-r-cena') ? document.getElementById('cfg-r-cena').value : config.ratios.cena;
-
-  const etiquetas = { desayuno: `DESAYUNO (R${ratioDes})`, mam: `MERIENDA (R${ratioMam})`, almuerzo: `ALMUERZO (R${ratioAlm})`, mpm: `ONCE (R${ratioMpm})`, cena: `CENA (R${ratioCena})`, corroborar: 'CORROBORAR (SOLO CORRECCIÓN)' };
-  Array.from(s.options).forEach(opcion => {
-    if (etiquetas[opcion.value]) opcion.text = etiquetas[opcion.value];
-  });
-
-  const meal = s.value;
-  const inputActivo = document.getElementById('cfg-r-' + (meal === 'almuerzo' ? 'alm' : meal));
-  const valActivo = inputActivo ? inputActivo.value : (config.ratios[meal] || 0);
-  const labelCarbos = document.getElementById('label-carbos');
-  if (labelCarbos) { labelCarbos.innerHTML = `comida CHO R${valActivo}`; }
-  
+  const select = document.getElementById('comida');
+  const anterior = select.value;
+  const activas = comidasActivas();
+  select.innerHTML = activas.map(key => `<option value="${key}">${comidasPolar[key]} · R${config.ratios[key]}</option>`).join('') + '<option value="corroborar">Corroborar · Solo corrección</option>';
+  select.value = activas.includes(anterior) || anterior === 'corroborar' ? anterior : (activas[0] || 'corroborar');
+  const meal = select.value;
+  actualizarComidaNota();
+  document.getElementById('label-carbos').textContent = meal === 'corroborar' ? 'Carbohidratos (g)' : `Carbohidratos (g) · R${config.ratios[meal]}`;
   const selectMeta = document.getElementById('meta');
-  if(selectMeta) {
-    if (meal === 'corroborar') {
-      selectMeta.value = config.metas.correccion;
-    } else {
-      selectMeta.value = config.metas.antes;
-    }
-  }
+  if (selectMeta) selectMeta.value = meal === 'corroborar' ? config.metas.correccion : config.metas.antes;
+}
+
+function actualizarComidaNota() {
+  const comida = document.getElementById('comida').value;
+  const nombre = comidasPolar[comida] || 'Corroborar';
+  const etiqueta = document.getElementById('nota-comida-nombre');
+  if (etiqueta) etiqueta.textContent = nombre;
+}
+
+async function guardarNota() {
+  const campo = document.getElementById('nota-texto');
+  const estado = document.getElementById('nota-estado');
+  const nota = campo.value.trim();
+  if (!nota) { estado.textContent = 'Escribe el motivo o comentario antes de guardar.'; campo.focus(); return; }
+  if (nota.length > 2000) { estado.textContent = 'La nota admite hasta 2.000 caracteres.'; return; }
+  if (!localStorage.getItem('polar_user_id')) { estado.textContent = 'Inicia sesión para guardar la nota.'; return; }
+  const tipoComida = document.getElementById('comida').value;
+  guardarRegistroPolar({ dosis: null, glucosa: null, carbos: null, tipoComida, nota });
+  campo.value = '';
+  estado.textContent = 'Nota guardada. Puedes verla en Registros.';
+  actualizarRadar();
+  actualizarVistaHistorial();
+}
+
+function guardarRegistroPolar(datos) {
+  const ahora = new Date();
+  const userId = localStorage.getItem('polar_user_id');
+  const clientId = crypto.randomUUID();
+  const registro = { ...datos, clientId, fecha: ahora.toLocaleString('es-CL'), iso: obtenerFechaLocalISO(), timestamp: ahora.getTime() };
+  const payload = { paciente_id: userId, client_id: clientId, created_at: ahora.toISOString(), glucosa: datos.glucosa, carbos: datos.carbos, dosis: datos.dosis, tipo_comida: datos.tipoComida, nota: datos.nota || null };
+  const historial = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+  const cola = JSON.parse(localStorage.getItem('polar_cola_sync') || '[]');
+  cola.push(payload);
+  localStorage.setItem('polar_cola_sync', JSON.stringify(cola));
+  historial.push(registro);
+  localStorage.setItem('historial_polar', JSON.stringify(historial));
+  procesarColaOffline();
+  return registro;
 }
 
 function despertarPolar() { 
@@ -1283,23 +1346,7 @@ function guardarDosisAplicada(e, dosis, glucosa, carbos, tipoComida) {
       return;
   }
 
-  const ahora = new Date(); 
-  const fecha = ahora.toLocaleString('es-CL'); 
-  const isoFecha = obtenerFechaLocalISO(); 
-
-  let historial = JSON.parse(localStorage.getItem('historial_polar') || '[]'); 
-  historial.push({ fecha: fecha, iso: isoFecha, dosis: dosis, glucosa: glucosa, carbos: carbos, tipoComida: tipoComida, timestamp: ahora.getTime() }); 
-  localStorage.setItem('historial_polar', JSON.stringify(historial));
-
-  polarDb.from('historial_polar').insert([
-      { paciente_id: userId, glucosa: glucosa, carbos: carbos, dosis: dosis, tipo_comida: tipoComida }
-  ]).then(({ error }) => {
-      if (error) throw error;
-  }).catch((err) => {
-      let colaSync = JSON.parse(localStorage.getItem('polar_cola_sync') || '[]');
-      colaSync.push({ paciente_id: userId, glucosa: glucosa, carbos: carbos, dosis: dosis, tipo_comida: tipoComida, created_at: new Date().toISOString() });
-      localStorage.setItem('polar_cola_sync', JSON.stringify(colaSync));
-  });
+  guardarRegistroPolar({ dosis, glucosa, carbos, tipoComida });
 
   document.getElementById('glucosa').value = ''; 
   document.getElementById('carbos').value = ''; 
@@ -1320,21 +1367,22 @@ function actualizarVistaHistorial() {
     lista.innerHTML = '<p style="text-align: center; color: var(--text-primary); font-weight: 700; font-size: 14px;">Aún no hay registros.</p>'; 
     return; 
   }
-  const dict = { 'desayuno': 'Desayuno', 'mam': 'Merienda', 'almuerzo': 'Almuerzo', 'mpm': 'Once', 'cena': 'Cena', 'corroborar': 'Corroboración', 'post-comida': '2 Horas Post-Comida' };
+  const dict = { 'desayuno': 'Desayuno', 'mam': 'Colación', 'almuerzo': 'Almuerzo', 'mpm': 'Once', 'cena': 'Cena', 'corroborar': 'Corroboración', 'post-comida': '2 Horas Post-Comida' };
   let html = ''; 
   let fechaAgrupada = ''; 
-  const hOrd = historial.slice(); 
+  const hOrd = historial.slice().sort((a,b) => b.timestamp - a.timestamp); 
   
   hOrd.forEach(item => {
+    if (item.nota) { html += tarjetaNota(item); return; }
     const nom = item.tipoComida ? dict[item.tipoComida] : 'Manual'; 
     const partes = item.fecha.split(', '); 
     const dS = partes[0]; 
-    const hS = partes || item.fecha;
+    const hS = partes[1] || item.fecha;
     if (dS !== fechaAgrupada) { 
       fechaAgrupada = dS; 
       html += `<div class="historial-fecha-bloque">${dS}</div>`; 
     }
-    let det = item.tipoComida === 'post-comida' ? `Medido: <span style="color: var(--turquoise-strong); font-weight:900;">${item.glucosa}</span>` : `Azúcar: ${item.glucosa || 0} | CHO: ${item.carbos || 0}g`;
+    let det = item.tipoComida === 'post-comida' ? `Medido: <span style="color: var(--turquoise-strong); font-weight:900;">${item.glucosa}</span>` : `Azúcar: ${item.glucosa || 0} | CHO: ${item.carbos == null ? 'Sin dato' : escaparHTML(item.carbos) + ' g'}`;
     let dos = (item.tipoComida === 'post-comida') ? (item.dosis > 0 ? `<div style="color: var(--turquoise-strong); font-weight: 900; font-size: 20px;">${item.dosis} U</div>` : `<div style="color: var(--turquoise-strong); font-weight: 900; font-size: 16px;">Revisión</div>`) : `<div style="color: var(--text-dark); font-weight: 900; font-size: 20px;">${item.dosis} U</div>`;
 
     html += `<div class="historial-registro">
@@ -1451,7 +1499,7 @@ function renderGraficoPicos() {
       return new Date(item.iso + 'T00:00:00').getTime(); 
   };
 
-  const historialSemana = historialCompleto.filter(item => parseItemTime(item) >= inicioSemana);
+  const historialSemana = historialCompleto.filter(item => !item.nota && item.glucosa != null && parseItemTime(item) >= inicioSemana);
 
   if (historialSemana.length === 0) {
       ctx.fillStyle = textCol; 
@@ -1599,7 +1647,8 @@ function navegarCalculos(dir) {
       let est = calcHistoria[calcPosicion]; 
       document.getElementById('glucosa').value = est.glucosa; 
       document.getElementById('carbos').value = est.carbos; 
-      document.getElementById('comida').value = est.comida; 
+      document.getElementById('comida').value = est.comida;
+      actualizarComidaNota(); 
       document.getElementById('meta').value = est.meta; 
       estadoEjercicio = est.estadoEjercicio - 1; 
       ciclarEjercicio(); 

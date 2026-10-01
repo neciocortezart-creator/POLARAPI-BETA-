@@ -1,5 +1,5 @@
-const CACHE_NAME = 'polar-elite-cache-v5';
-const ASSETS_TO_CACHE = ['./', './index.html', './manifest.json', './polar-logo.png', './styles.css', './app.js', './supabase.js'];
+const CACHE_NAME = 'polar-elite-cache-v8-notas-comidas';
+const ASSETS_TO_CACHE = ['./', './index.html', './manifest.json', './polar-logo.png', './styles.css?v=7', './app.js?v=7', './supabase.js'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE)).then(() => self.skipWaiting()));
 });
@@ -54,3 +54,4 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+

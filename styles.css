@@ -104,7 +104,7 @@ select.select-small { padding: 10px; font-size: 14px; background: var(--input-bg
 
 .card-settings label, .card-citas label { font-size: 13px; margin-bottom: 4px; color: var(--card-text); font-weight: 800; opacity: 0.85; }
 .card-settings h3, .card-avatars h3, .card-citas h3, .card-panel-grafico h3, .card-buscador h3 { font-size: 16px; margin-bottom: 12px; color: var(--card-text); font-weight: 900; }
-.panel-header-small { font-size: 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--card-text); font-weight: 900; }
+.panel-header-small { font-size: 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: inherit; font-weight: 900; }
 .card-panel-grafico p, .card-buscador p { color: var(--card-text); opacity: 0.9; }
 .btn-close-panel { color: var(--card-text); }
 
@@ -273,3 +273,61 @@ select.select-small { padding: 10px; font-size: 14px; background: var(--input-bg
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.15);
 }
+
+/* Polar: clearer hierarchy, accessible controls and meal notes. */
+.app-container { max-width: 520px; }
+.header { padding: 10px 0 18px; margin-bottom: 12px; }
+.card { border-radius: 20px; box-shadow: 0 5px 20px rgba(30,55,60,.045); }
+.card-meal { border: 1px solid var(--input-border); }
+.card-meal label { font-size: 18px !important; margin-bottom: 12px; }
+.card-glucose, .card-carbs { padding: 20px 16px; }
+input, select, textarea { min-width: 0; }
+button, select, summary { touch-action: manipulation; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid var(--turquoise-strong); outline-offset: 4px; }
+.btn-main { border-radius: 16px; min-height: 56px; box-shadow: 0 6px 16px rgba(8,131,135,.16); }
+.note-composer { background: var(--white); border: 1px solid var(--input-border); border-radius: 18px; overflow: hidden; }
+.note-composer summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px; font-size: 16px; font-weight: 800; cursor: pointer; color: var(--text-primary); list-style: none; }
+.note-composer summary::-webkit-details-marker { display: none; }
+.note-composer summary span { font-size: 12px; font-weight: 600; opacity: .7; }
+.note-composer[open] summary { border-bottom: 1px solid var(--input-border); }
+.note-fields { padding: 18px; display: grid; gap: 12px; }
+.note-fields label { font-size: 14px; margin: 0; }
+.note-fields select, .note-fields textarea { width: 100%; padding: 13px; font-size: 16px; color: var(--input-text); background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; }
+.note-fields textarea { resize: vertical; line-height: 1.5; }
+.note-fields .btn-save { margin: 0; }
+.field-help { font-size: 14px; line-height: 1.55; color: inherit; opacity: 1; margin-bottom: 10px; }
+#nota-estado { font-size: 13px; line-height: 1.5; color: var(--text-primary); }
+#nota-estado:empty { display: none; }
+.record-heading { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: space-between; }
+.record-heading strong { color: var(--turquoise-strong); font-size: 14px; }
+.record-heading span { font-size: 12px; opacity: .75; }
+.note-record { display: block; padding: 16px; border-left: 3px solid var(--turquoise-strong); background: var(--bg-polar); }
+.note-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 10px; line-height: 1.55; font-size: 14px; color: var(--text-primary); }
+.record-carbs { font-size: 12px; font-weight: 700; margin-top: 5px; }
+.historial-registro { margin-bottom: 10px; }
+@media (max-width: 370px) { body { padding: 12px; } .grid { gap: 10px; } .card-glucose, .card-carbs { padding: 16px 10px; } .header { gap: 8px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Use the text color of each actual surface, including Polar Ice. */
+#radar-precision, .historial-box, .note-composer { color: var(--text-primary); }
+.card-settings .field-help, .card-settings h3 { color: var(--card-text); opacity: 1; }
+.card-settings label, .card-citas label { opacity: 1; }
+.card-glucose input::placeholder, .card-carbs input::placeholder { color: #59656b !important; opacity: 1; }
+/* A compact disclosure; only its editing area expands. */
+.note-composer { width: fit-content; max-width: 100%; justify-self: start; border-radius: 12px; }
+.note-composer summary { min-height: 44px; padding: 10px 14px; font-size: 14px; gap: 8px; }
+.note-composer[open] { width: 100%; max-width: 420px; }
+.note-fields { padding: 14px; gap: 9px; }
+.note-fields .field-help { font-size: 13px; margin-bottom: 2px; }
+.note-fields select, .note-fields textarea { padding: 10px 12px; }
+.note-fields textarea { min-height: 76px; }
+
+/* Explicit surface colors prevent inherited light text on the white radar. */
+#radar-precision .panel-header-small,
+.historial-box > .panel-header-small { color: var(--text-primary); opacity: 1; }
+#panel-config .field-help, #panel-config h3,
+#panel-config label { color: var(--card-text); opacity: 1; }
+.note-context { color: var(--text-primary); font-size: 13px; line-height: 1.4; }
+.note-context strong { font-weight: 800; }
+.note-composer[open] { max-width: 360px; }
+.note-fields .btn-save { width: auto; justify-self: start; min-height: 44px; padding: 10px 16px; font-size: 14px; }
