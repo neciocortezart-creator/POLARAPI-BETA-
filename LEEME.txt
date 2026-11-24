@@ -1,7 +1,7 @@
 APP POLAR — Correcciones 15 septiembre 2026
 
 Cambios:
-- Merienda corresponde a mam (mañana) y Once a mpm (tarde), en selector, configuración, historial e informes. Se conservan los identificadores y ratios de cada horario.
+- Colación (antes Merienda) corresponde a mpm y Once a mam, en selector, configuración, historial e informes. El orden visible es Desayuno, Colación, Almuerzo, Once, Cena. Se conservan los identificadores y los ratios de cada horario; un registro guardado como Merienda o mpm se muestra como Colación.
 - La configuración local se carga antes de contactar al servidor. Un fallo de red no cierra la sesión ni borra los datos locales durante el arranque.
 - Guardado local y cola de sincronización de configuración por usuario. Un error de sincronización conserva el cambio pendiente; se reintenta al volver la conexión o abrir la app.
 - Biblioteca Supabase incluida localmente y caché de la app independiente de fuentes y exportador PDF externos.

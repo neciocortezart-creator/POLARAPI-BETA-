@@ -3,6 +3,38 @@ const supabaseUrl = 'https://rgwawwdldqodzmsizean.supabase.co';
 const supabaseKey = 'sb_publishable_-4Q07zNvB5Ep9fLwIZW6Yw_axmOPTM7';
 const polarDb = createClient ? createClient(supabaseUrl, supabaseKey) : null;
 
+// Claves internas estables: no se renombran ni se reescriben en Supabase ni en polar_config.
+// mam sigue siendo Once (cfg-r-mam; el ratio 0 no se toca). mpm era Merienda y ahora se muestra como Colación (cfg-r-mpm).
+const ORDEN_COMIDAS = ['desayuno', 'mpm', 'almuerzo', 'mam', 'cena'];
+
+const NOMBRES_COMIDA = {
+  desayuno: 'Desayuno',
+  mpm: 'Colación',
+  almuerzo: 'Almuerzo',
+  mam: 'Once',
+  cena: 'Cena',
+  corroborar: 'Revisión',
+  'post-comida': '2H Post'
+};
+
+function claveComida(tipo) {
+  if (tipo == null) return '';
+  const t = String(tipo).trim().toLowerCase();
+  if (!t) return '';
+  if (Object.prototype.hasOwnProperty.call(NOMBRES_COMIDA, t)) return t;
+  if (t === 'merienda' || t === 'merienda tarde' || t === 'merienda pm' || t === 'merienda-tarde' || t === 'colación' || t === 'colacion') return 'mpm';
+  if (t === 'once') return 'mam';
+  return t;
+}
+
+function etiquetaComida(tipo, variantes) {
+  if (!tipo && tipo !== 0) return 'Manual';
+  const clave = claveComida(tipo);
+  if (variantes && Object.prototype.hasOwnProperty.call(variantes, clave)) return variantes[clave];
+  if (Object.prototype.hasOwnProperty.call(NOMBRES_COMIDA, clave)) return NOMBRES_COMIDA[clave];
+  return 'Manual';
+}
+
 function switchTab(tabId) {
   const panelMenu = document.getElementById('panel-menu');
   const overlay = document.getElementById('panel-overlay');
@@ -23,7 +55,6 @@ function switchTab(tabId) {
 
   document.getElementById('main-calculator').style.display = 'none';
   document.getElementById('view-graficas').style.display = 'none';
-  document.getElementById('view-buscador').style.display = 'none'; 
   document.getElementById('view-historial').style.display = 'none';
   document.getElementById('view-citas').style.display = 'none';
   document.getElementById('view-config').style.display = 'none';
@@ -49,19 +80,13 @@ function switchTab(tabId) {
     document.getElementById('nav-graficas').classList.add('active');
     renderGraficoPicos();
   } 
-  else if (tabId === 'buscador') {
-    document.getElementById('view-buscador').style.display = 'block';
-    document.getElementById('nav-buscador').classList.add('active');
-  }
   else if (tabId === 'historial') {
     document.getElementById('view-historial').style.display = 'block';
-    if (radar) radar.style.display = 'block';
     document.getElementById('nav-historial').classList.add('active');
     actualizarVistaHistorial();
   } 
   else if (tabId === 'citas') {
     document.getElementById('view-citas').style.display = 'block';
-    document.getElementById('nav-citas').classList.add('active');
     renderCitas();
   } 
   else if (tabId === 'config') {
@@ -88,10 +113,8 @@ function actualizarRadar() {
       return;
   }
 
-  const dict = { 'desayuno': 'Desayuno', 'mam': 'Once', 'almuerzo': 'Almuerzo', 'mpm': 'Merienda', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
-
   listaRadar.innerHTML = ultimosTres.map(reg => {
-      const nombreComida = dict[reg.tipoComida] || 'Manual';
+      const nombreComida = etiquetaComida(reg.tipoComida);
       const hora = reg.fecha.split(', ')[1] || reg.fecha;
       let colorGlucosa = 'var(--text-primary)';
       if(reg.glucosa < 70) colorGlucosa = '#FF3B30';
@@ -106,7 +129,7 @@ function actualizarRadar() {
           </div>
           <div style="text-align: right; display: flex; align-items: center; gap: 15px;">
               <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                  <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; opacity: 0.6;">Nivel</span>
+                  <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; opacity: 0.6;">Glucosa</span>
                   <span style="font-size: 16px; font-weight: 900; color: ${colorGlucosa};">${reg.glucosa}</span>
               </div>
               <div style="display: flex; flex-direction: column; align-items: flex-end;">
@@ -318,7 +341,8 @@ async function cerrarSesion() {
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
   document.getElementById('lista-historial').innerHTML = '';
-  document.getElementById('btn-usuario-nombre').innerText = 'Líder';
+  const btnNombre = document.getElementById('btn-usuario-nombre');
+  if (btnNombre) btnNombre.innerText = 'Líder';
   
   switchTab('home');
   
@@ -332,7 +356,8 @@ async function guardarNombreUsuario() {
   const userId = localStorage.getItem('polar_user_id') || 'default';
   if(nuevoNombre) {
     localStorage.setItem('polar_nombre_lider_' + userId, nuevoNombre);
-    document.getElementById('btn-usuario-nombre').innerText = nuevoNombre;
+    const btnNombre = document.getElementById('btn-usuario-nombre');
+    if (btnNombre) btnNombre.innerText = nuevoNombre;
     polarDb.auth.updateUser({ data: { nombre_lider: nuevoNombre } });
     switchTab('home');
   }
@@ -341,7 +366,8 @@ async function guardarNombreUsuario() {
 function cargarNombreUsuario() {
   const userId = localStorage.getItem('polar_user_id') || 'default';
   const nombreGuardado = localStorage.getItem('polar_nombre_lider_' + userId) || 'Líder';
-  document.getElementById('btn-usuario-nombre').innerText = nombreGuardado;
+  const btnNombre = document.getElementById('btn-usuario-nombre');
+  if (btnNombre) btnNombre.innerText = nombreGuardado;
 }
 
 let backupData = null; 
@@ -373,18 +399,18 @@ function deshacerBorrado() {
 
 const temasVisuales = {
   elite: { '--bg-polar': '#FAF8F5', '--white': '#FFFFFF', '--blue-ice-light': '#5B9BD5', '--blue-ice-mid': '#F3C623', '--turquoise-soft': '#088387', '--turquoise-strong': '#088387', '--text-primary': '#2C3A40', '--text-inverse': '#FFFFFF', '--text-dark': '#2C3A40', '--btn-text': '#FFFFFF', '--accent-btn': '#F05A4A', '--accent-btn-text': '#FFFFFF', '--card-bg': '#FFFFFF', '--card-text': '#2C3A40', '--input-bg': '#FFFFFF', '--input-text': '#1A1A1A', '--input-border': 'rgba(44, 58, 64, 0.20)', '--label-color': '#2C3A40', '--calendar-invert': '0', '--bg-card-glucose': '#088387', '--text-card-glucose': '#FFFFFF', '--bg-card-carbs': '#2C3A40', '--text-card-carbs': '#FFFFFF' },
-  original: { '--bg-polar': '#F0F6F7', '--white': '#FFFFFF', '--blue-ice-light': '#D4E4E6', '--blue-ice-mid': '#A2C5C9', '--turquoise-soft': '#7AB0B2', '--turquoise-strong': '#4A8C8E', '--text-primary': '#1A2A30', '--text-inverse': '#FFFFFF', '--text-dark': '#1A2A30', '--btn-text': '#FFFFFF', '--accent-btn': '#bdff6f', '--accent-btn-text': '#1A2A30', '--card-bg': '#2C3A40', '--card-text': '#F0F6F7', '--input-bg': '#FFFFFF', '--input-text': '#1A2A30', '--input-border': 'rgba(0, 0, 0, 0.25)', '--label-color': '#1A2A30', '--calendar-invert': '1', '--bg-card-glucose': '#D4E4E6', '--text-card-glucose': '#1A2A30', '--bg-card-carbs': '#A2C5C9', '--text-card-carbs': '#1A2A30' },
   oscuro: { '--bg-polar': '#121212', '--white': '#1E1E1E', '--blue-ice-light': '#2C2C2C', '--blue-ice-mid': '#3A3A3A', '--turquoise-soft': '#66B2B4', '--turquoise-strong': '#4A8C8E', '--text-primary': '#F0F0F0', '--text-inverse': '#121212', '--text-dark': '#F0F0F0', '--btn-text': '#FFFFFF', '--accent-btn': '#bdff6f', '--accent-btn-text': '#121212', '--card-bg': '#1E1E1E', '--card-text': '#F0F0F0', '--input-bg': '#2A2A2A', '--input-text': '#F0F0F0', '--input-border': 'rgba(255, 255, 255, 0.4)', '--label-color': '#F0F0F0', '--calendar-invert': '1', '--bg-card-glucose': '#2C2C2C', '--text-card-glucose': '#F0F0F0', '--bg-card-carbs': '#3A3A3A', '--text-card-carbs': '#F0F0F0' },
   blanco: { '--bg-polar': '#F8F9FA', '--white': '#FFFFFF', '--blue-ice-light': '#E9ECEF', '--blue-ice-mid': '#CED4DA', '--turquoise-soft': '#495057', '--turquoise-strong': '#212529', '--text-primary': '#1A1A1A', '--text-inverse': '#FFFFFF', '--text-dark': '#1A1A1A', '--btn-text': '#FFFFFF', '--accent-btn': '#0D6EFD', '--accent-btn-text': '#FFFFFF', '--card-bg': '#E9ECEF', '--card-text': '#1A1A1A', '--input-bg': '#FFFFFF', '--input-text': '#1A1A1A', '--input-border': '#ADB5BD', '--label-color': '#1A1A1A', '--calendar-invert': '0', '--bg-card-glucose': '#E9ECEF', '--text-card-glucose': '#1A1A1A', '--bg-card-carbs': '#CED4DA', '--text-card-carbs': '#1A1A1A' },
-  halloween: { '--bg-polar': '#2A162B', '--white': '#1A0B1A', '--blue-ice-light': '#582A4D', '--blue-ice-mid': '#B5452C', '--turquoise-soft': '#E88C15', '--turquoise-strong': '#E88C15', '--text-primary': '#F5D6B4', '--text-inverse': '#1A0B1A', '--text-dark': '#F5D6B4', '--btn-text': '#1A0B1A', '--accent-btn': '#B5452C', '--accent-btn-text': '#FFFFFF', '--card-bg': '#1A0B1A', '--card-text': '#F5D6B4', '--input-bg': '#2A162B', '--input-text': '#F5D6B4', '--input-border': '#E88C15', '--label-color': '#F5D6B4', '--calendar-invert': '1', '--bg-card-glucose': '#582A4D', '--text-card-glucose': '#F5D6B4', '--bg-card-carbs': '#B5452C', '--text-card-carbs': '#FFFFFF' },
-  mustard_jet: { '--bg-polar': '#E4DFD8', '--white': '#FFFFFF', '--blue-ice-light': '#F2D04E', '--blue-ice-mid': '#24221B', '--turquoise-soft': '#F2D04E', '--turquoise-strong': '#24221B', '--text-primary': '#24221B', '--text-inverse': '#E4DFD8', '--text-dark': '#24221B', '--btn-text': '#FFFFFF', '--accent-btn': '#F2D04E', '--accent-btn-text': '#24221B', '--card-bg': '#FFFFFF', '--card-text': '#24221B', '--input-bg': '#FFFFFF', '--input-text': '#24221B', '--input-border': 'rgba(36, 34, 27, 0.25)', '--label-color': '#24221B', '--calendar-invert': '0', '--bg-card-glucose': '#24221B', '--text-card-glucose': '#FFFFFF', '--bg-card-carbs': '#F2D04E', '--text-card-carbs': '#24221B' },
-  moonstone_orange: { '--bg-polar': '#7AA6B3', '--white': '#FFFFFF', '--blue-ice-light': '#EE6C29', '--blue-ice-mid': '#282B2B', '--turquoise-soft': '#EE6C29', '--turquoise-strong': '#282B2B', '--text-primary': '#282B2B', '--text-inverse': '#FFFFFF', '--text-dark': '#282B2B', '--btn-text': '#FFFFFF', '--accent-btn': '#EE6C29', '--accent-btn-text': '#FFFFFF', '--card-bg': '#FFFFFF', '--card-text': '#282B2B', '--input-bg': '#FFFFFF', '--input-text': '#282B2B', '--input-border': 'rgba(40, 43, 43, 0.3)', '--label-color': '#282B2B', '--calendar-invert': '0', '--bg-card-glucose': '#282B2B', '--text-card-glucose': '#FFFFFF', '--bg-card-carbs': '#EE6C29', '--text-card-carbs': '#282B2B' },
-  persian_carrot: { '--bg-polar': '#EEEEEE', '--white': '#FFFFFF', '--blue-ice-light': '#EF8F00', '--blue-ice-mid': '#0038BC', '--turquoise-soft': '#EF8F00', '--turquoise-strong': '#0038BC', '--text-primary': '#0038BC', '--text-inverse': '#FFFFFF', '--text-dark': '#0038BC', '--btn-text': '#FFFFFF', '--accent-btn': '#EF8F00', '--accent-btn-text': '#FFFFFF', '--card-bg': '#FFFFFF', '--card-text': '#0038BC', '--input-bg': '#FFFFFF', '--input-text': '#0038BC', '--input-border': 'rgba(0, 56, 188, 0.25)', '--label-color': '#0038BC', '--calendar-invert': '0', '--bg-card-glucose': '#0038BC', '--text-card-glucose': '#FFFFFF', '--bg-card-carbs': '#EF8F00', '--text-card-carbs': '#1A1A1A' },
-  mellow_cornflower: { '--bg-polar': '#DDD4C4', '--white': '#FFFFFF', '--blue-ice-light': '#F1C436', '--blue-ice-mid': '#5C88CD', '--turquoise-soft': '#F1C436', '--turquoise-strong': '#5C88CD', '--text-primary': '#1A2B4C', '--text-inverse': '#FFFFFF', '--text-dark': '#1A2B4C', '--btn-text': '#FFFFFF', '--accent-btn': '#F1C436', '--accent-btn-text': '#1A2B4C', '--card-bg': '#FFFFFF', '--card-text': '#1A2B4C', '--input-bg': '#FFFFFF', '--input-text': '#1A2B4C', '--input-border': 'rgba(26, 43, 76, 0.25)', '--label-color': '#1A2B4C', '--calendar-invert': '0', '--bg-card-glucose': '#5C88CD', '--text-card-glucose': '#FFFFFF', '--bg-card-carbs': '#F1C436', '--text-card-carbs': '#1A2B4C' }
 };
 
+const TEMAS_VISIBLES = ['elite', 'oscuro', 'blanco'];
+
+function temaVisible(nombre) {
+  return TEMAS_VISIBLES.indexOf(nombre) >= 0 ? nombre : 'elite';
+}
+
 function cambiarTema() { 
-  const temaElegido = document.getElementById('cfg-tema').value; 
+  const temaElegido = temaVisible(document.getElementById('cfg-tema').value); 
   config.tema = temaElegido; 
   localStorage.setItem('polar_config', JSON.stringify(config)); 
   aplicarTemaReal(temaElegido); 
@@ -392,7 +418,7 @@ function cambiarTema() {
 }
 
 function aplicarTemaReal(temaNombre) { 
-  const paleta = temasVisuales[temaNombre] || temasVisuales['elite']; 
+  const paleta = temasVisuales[temaVisible(temaNombre)] || temasVisuales['elite']; 
   const root = document.documentElement; 
   for (const [key, value] of Object.entries(paleta)) { root.style.setProperty(key, value); } 
 }
@@ -497,20 +523,16 @@ function renderDesgloseComidas(historialFiltrado, textCol) {
     const divComidas = document.getElementById('panel-comidas-stats');
     if(!divComidas) return;
 
-    let stats = {
-        desayuno: { sum: 0, count: 0 },
-        mam: { sum: 0, count: 0 },
-        almuerzo: { sum: 0, count: 0 },
-        mpm: { sum: 0, count: 0 },
-        cena: { sum: 0, count: 0 }
-    };
+    let stats = {};
+    ORDEN_COMIDAS.forEach(k => { stats[k] = { sum: 0, count: 0 }; });
     let totalValidos = 0;
 
     historialFiltrado.forEach(d => {
         let val = parseFloat(d.glucosa);
-        if (!isNaN(val) && stats.hasOwnProperty(d.tipoComida)) {
-            stats[d.tipoComida].sum += val;
-            stats[d.tipoComida].count++;
+        const clave = claveComida(d.tipoComida);
+        if (!isNaN(val) && Object.prototype.hasOwnProperty.call(stats, clave)) {
+            stats[clave].sum += val;
+            stats[clave].count++;
             totalValidos++;
         }
     });
@@ -520,10 +542,10 @@ function renderDesgloseComidas(historialFiltrado, textCol) {
         return;
     }
 
-    const nombres = { desayuno: 'Desayuno', mam: 'Once', almuerzo: 'Almuerzo', mpm: 'Merienda', cena: 'Cena' };
+    const nombres = { desayuno: 'Desayuno', mpm: 'Colación', almuerzo: 'Almuerzo', mam: 'Once', cena: 'Cena' };
     const colores = { desayuno: '#FCA311', mam: '#D84B79', almuerzo: '#4CAF50', mpm: '#5B9BD5', cena: '#A35496' };
 
-    let html = `<h4 style="font-size: 15px; color: var(--turquoise-strong); margin-bottom: 12px; font-weight: 900;">Promedio de Energía por Comida</h4>`;
+    let html = `<h4 style="font-size: 15px; color: var(--turquoise-strong); margin-bottom: 12px; font-weight: 900;">Promedio de glucosa por comida</h4>`;
 
     for (let key in stats) {
         if(stats[key].count > 0) {
@@ -553,8 +575,10 @@ function renderDesgloseComidas(historialFiltrado, textCol) {
 }
 
 function buscarDiaEspecifico() {
-    const fechaSeleccionada = document.getElementById('buscador-fecha').value;
+    const fechaInput = document.getElementById('buscador-fecha');
     const contenedorResultados = document.getElementById('resultado-buscador');
+    if (!fechaInput || !contenedorResultados) return;
+    const fechaSeleccionada = fechaInput.value;
 
     if (!fechaSeleccionada) {
         contenedorResultados.style.display = 'none';
@@ -572,7 +596,6 @@ function buscarDiaEspecifico() {
         return;
     }
 
-    const dictNombres = { 'desayuno': 'Desayuno', 'mam': 'Once', 'almuerzo': 'Almuerzo', 'mpm': 'Merienda', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
     const dictColores = { 'desayuno': '#FCA311', 'mam': '#D84B79', 'almuerzo': '#4CAF50', 'mpm': '#5B9BD5', 'cena': '#A35496', 'corroborar': '#2C3A40', 'post-comida': '#088387' };
 
     const partesFecha = fechaSeleccionada.split('-');
@@ -583,8 +606,9 @@ function buscarDiaEspecifico() {
     registrosDelDia.sort((a, b) => a.timestamp - b.timestamp);
 
     registrosDelDia.forEach(reg => {
-        const nombreComida = dictNombres[reg.tipoComida] || 'Manual';
-        const colorEtiqueta = dictColores[reg.tipoComida] || '#2C3A40';
+        const clave = claveComida(reg.tipoComida);
+        const nombreComida = etiquetaComida(reg.tipoComida);
+        const colorEtiqueta = dictColores[clave] || '#2C3A40';
         
         let colorGlucosa = 'var(--text-primary)';
         if(reg.glucosa < 70) colorGlucosa = '#FF3B30';
@@ -890,10 +914,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     usoRedondeoElite = (estadoRedondeoGuardado === 'true');
   }
   
+  config.tema = temaVisible(config.tema);
   document.getElementById('cfg-tema').value = config.tema; 
   aplicarTemaReal(config.tema);
 
-  document.getElementById('cfg-peso').value = config.peso;
+  if (document.getElementById('cfg-peso')) document.getElementById('cfg-peso').value = config.peso;
   document.getElementById('cfg-toujeo').value = config.toujeo; 
 
   if (document.getElementById('cfg-fc-desayuno')) document.getElementById('cfg-fc-desayuno').value = config.fc.desayuno;
@@ -1093,8 +1118,8 @@ function generarPDFElite() {
       <h3 style="color: #088387; margin-bottom: 12px; font-size: 18px; margin-top:0; font-weight: 900;">Esquema Médico Actual</h3>
       <ul style="font-size: 14px; line-height: 1.6; list-style: none; padding: 0; margin: 0; font-weight: 700;">
         <li><strong>Basal (Toujeo):</strong> ${config.toujeo} U</li>
-        <li><strong>Factores de Corrección:</strong> Des: ${config.fc.desayuno} | Once: ${config.fc.mam} | Alm: ${config.fc.almuerzo} | PM: ${config.fc.mpm} | Cena: ${config.fc.cena} | Rev: ${config.fc.corroborar}</li>
-        <li><strong>Ratios:</strong> Desayuno R${config.ratios.desayuno} | Once R${config.ratios.mam} | Almuerzo R${config.ratios.almuerzo} | PM R${config.ratios.mpm} | Cena R${config.ratios.cena}</li>
+        <li><strong>Factores de Corrección:</strong> Desayuno: ${config.fc.desayuno} | Colación: ${config.fc.mpm} | Almuerzo: ${config.fc.almuerzo} | Once: ${config.fc.mam} | Cena: ${config.fc.cena} | Rev: ${config.fc.corroborar}</li>
+        <li><strong>Ratios:</strong> Desayuno R${config.ratios.desayuno} | Colación R${config.ratios.mpm} | Almuerzo R${config.ratios.almuerzo} | Once R${config.ratios.mam} | Cena R${config.ratios.cena}</li>
       </ul>
     </div>`;
 
@@ -1116,11 +1141,9 @@ function generarPDFElite() {
         <tbody>`;
         
       const historialReverso = historial.slice().reverse();
-      const dict = { 'desayuno': 'Desayuno', 'mam': 'Once', 'almuerzo': 'Almuerzo', 'mpm': 'Merienda PM', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
-
       historialReverso.forEach((item, index) => {
         const bgRow = index % 2 === 0 ? '#FFFFFF' : '#F9F9F9';
-        const evento = item.tipoComida ? dict[item.tipoComida] : 'Manual';
+        const evento = item.tipoComida ? etiquetaComida(item.tipoComida) : 'Manual';
         
         let colorGlucosa = '#2C3A40';
         let pesoGlucosa = '700';
@@ -1143,7 +1166,8 @@ function generarPDFElite() {
 }
 
 async function guardarConfig() {
-  config.peso = parseFloat(document.getElementById('cfg-peso').value) || 50;
+  const pesoEl = document.getElementById('cfg-peso');
+  if (pesoEl) config.peso = parseFloat(pesoEl.value) || config.peso || 50;
   config.toujeo = parseFloat(document.getElementById('cfg-toujeo').value) || 0; 
   config.telEmergencia = document.getElementById('cfg-tel-emergencia').value || "131"; 
   config.telPapa = document.getElementById('cfg-tel-papa').value || "973808283";
@@ -1209,7 +1233,7 @@ function determinarComidaAutomatica() {
 
   if (registrosHoy.length === 0) return 'desayuno';
 
-  const principales = registrosHoy.filter(r => ['desayuno', 'mam', 'almuerzo', 'mpm', 'cena'].includes(r.tipoComida));
+  const principales = registrosHoy.filter(r => ORDEN_COMIDAS.includes(claveComida(r.tipoComida)));
   if (principales.length === 0) return 'desayuno';
 
   const ultimaPrincipal = principales[principales.length - 1];
@@ -1219,8 +1243,8 @@ function determinarComidaAutomatica() {
   const yaCorroborado = corroboracionesPost.length > 0;
 
   const horasPasadas = (Date.now() - timestampUltima) / 3600000;
-  const secuencia = ['desayuno', 'mam', 'almuerzo', 'mpm', 'cena'];
-  const idx = secuencia.indexOf(ultimaPrincipal.tipoComida);
+  const secuencia = ORDEN_COMIDAS;
+  const idx = secuencia.indexOf(claveComida(ultimaPrincipal.tipoComida));
   const nextMeal = secuencia[(idx + 1) % secuencia.length];
 
   if (!yaCorroborado) {
@@ -1253,12 +1277,17 @@ function actualizarTextosComida() {
   const ratioMpm = document.getElementById('cfg-r-mpm') ? document.getElementById('cfg-r-mpm').value : config.ratios.mpm;
   const ratioCena = document.getElementById('cfg-r-cena') ? document.getElementById('cfg-r-cena').value : config.ratios.cena;
 
-  s.options[0].text = `DESAYUNO (R${ratioDes})`; 
-  s.options[1].text = `ONCE (R${ratioMam})`; 
-  s.options[2].text = `ALMUERZO (R${ratioAlm})`; 
-  s.options[3].text = `MERIENDA TARDE (R${ratioMpm})`; 
-  s.options[4].text = `CENA (R${ratioCena})`; 
-  if(s.options[5]) s.options[5].text = `CORROBORAR (SOLO CORRECCIÓN)`;
+  const textoOpcion = {
+    desayuno: `DESAYUNO (R${ratioDes})`,
+    mpm: `COLACIÓN (R${ratioMpm})`,
+    almuerzo: `ALMUERZO (R${ratioAlm})`,
+    mam: `ONCE (R${ratioMam})`,
+    cena: `CENA (R${ratioCena})`,
+    corroborar: `CORROBORAR (SOLO CORRECCIÓN)`
+  };
+  Array.from(s.options).forEach(opt => {
+    if (textoOpcion[opt.value]) opt.text = textoOpcion[opt.value];
+  });
   
   const meal = s.value;
   const inputActivo = document.getElementById(RATIO_INPUT_IDS[meal] || ('cfg-r-' + meal));
@@ -1347,18 +1376,22 @@ function guardarDosisAplicada(e, dosis, glucosa, carbos, tipoComida, carbosBase,
 
 function actualizarVistaHistorial() {
   const lista = document.getElementById('lista-historial'); 
-  const historial = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+  const filtroEl = document.getElementById('filtro-fecha-historial');
+  const fechaFiltro = filtroEl ? filtroEl.value : '';
+  let historial = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+  if (fechaFiltro) historial = historial.filter(item => item.iso === fechaFiltro);
   if (historial.length === 0) { 
-    lista.innerHTML = '<div class="estado-vacio"><div class="estado-vacio-icono">🐻‍❄️</div><strong>Aún no hay registros</strong><span>Cuando guardes una dosis, aparecerá aquí.</span></div>'; 
+    lista.innerHTML = fechaFiltro
+      ? '<div class="estado-vacio"><strong>Sin registros en esta fecha</strong><span>Elige otra fecha o pulsa Todas.</span></div>'
+      : '<div class="estado-vacio"><div class="estado-vacio-icono">🐻‍❄️</div><strong>Aún no hay registros</strong><span>Cuando guardes una dosis, aparecerá aquí.</span></div>'; 
     return; 
   }
-  const dict = { 'desayuno': 'Desayuno', 'mam': 'Once', 'almuerzo': 'Almuerzo', 'mpm': 'Merienda tarde', 'cena': 'Cena', 'corroborar': 'Corroboración', 'post-comida': '2 Horas Post-Comida' };
   let html = ''; 
   let fechaAgrupada = ''; 
   const hOrd = historial.slice(); 
   
   hOrd.forEach(item => {
-    const nom = item.tipoComida ? dict[item.tipoComida] : 'Manual'; 
+    const nom = item.tipoComida ? etiquetaComida(item.tipoComida, { corroborar: 'Corroboración', 'post-comida': '2 Horas Post-Comida' }) : 'Manual'; 
     const partes = item.fecha.split(', '); 
     const dS = partes[0]; 
     const hS = partes[1] || item.fecha;
@@ -1575,7 +1608,7 @@ function renderGraficoPicos() {
 
           const tooltip = document.getElementById('grafico-tooltip');
           if (closest) {
-              tooltip.innerHTML = `Nivel: ${closest.val} mg/dL<br>Hora: ${closest.time}`;
+              tooltip.innerHTML = `Glucosa: ${closest.val} mg/dL<br>Hora: ${closest.time}`;
               tooltip.style.left = closest.x + 'px';
               tooltip.style.top = closest.y + 'px';
               tooltip.style.display = 'block';
@@ -1718,7 +1751,7 @@ function calcular(esNav = false) {
     colorNumeroGemas = "#FF3B30";
     protocoloClinicoHTML = `
       <div class="protocolo-box protocolo-alerta">
-        <strong>• ¡Tu energía está bajita!</strong><br>
+        <strong>• La glucosa está baja.</strong><br>
         <strong>Toma algo dulce YA:</strong> Bebe medio vaso de jugo o agua con 3 cucharaditas de azúcar.<br>
         <strong>Modo estatua:</strong> Siéntate y descansa. Cero correr o jugar.<br>
         <strong>Espera y revisa:</strong> Quédate tranquilo 15 minutos y vuelve a medirte.
@@ -1743,28 +1776,21 @@ function calcular(esNav = false) {
     }
   }
 
-  let btnAtras = `<button class="btn-small" onclick="navegarCalculos(-1)" ${calcPosicion <= 0 ? 'disabled' : ''}>Atrás</button>`; 
-  let btnAdel = `<button class="btn-small" onclick="navegarCalculos(1)" ${calcPosicion >= calcHistoria.length - 1 ? 'disabled' : ''}>Adelante</button>`;
-
   resDiv.className = "result-box";
   resDiv.innerHTML = `
     <button class="btn-close-modal" onclick="document.getElementById('resultado').style.display='none'">×</button>
-    <h2>¡Gemas Calculadas!</h2>
-    <div class="result-number" style="color: ${colorNumeroGemas} !important;">${dosisFinal}</div>
+    <h2>Dosis</h2>
+    <div class="result-number" style="color: ${colorNumeroGemas} !important;">${dosisFinal}<span class="dosis-unidad"> U</span></div>
     
     <button class="btn-save" style="background: var(--turquoise-strong); color: #FFFFFF; margin-top: 0px; margin-bottom: 8px; font-size: 14px; padding: 10px; border-radius: 12px; box-shadow: 0 6px 20px rgba(8,131,135,0.2);" 
     onclick="guardarDosisAplicada(event, ${dosisFinal}, ${glucosa}, ${carbos}, '${comidaKey}', ${conGrasas ? carbosBase : 'null'}, ${conGrasas ? desgloseCarbos.pct : 0})">Guardar Dosis</button>
     
-    <div class="result-unit" style="margin-bottom: 4px;">Gemas Ultra para Polar</div>
     <div class="result-details" style="margin-top: 0px;">
       ${conGrasas ? `<div class="desglose-grasas"><span>Carbos base <b>${fmtG(carbosBase)} g</b></span><span>+${fmtG(desgloseCarbos.pct)}% grasas <b>+${fmtG(desgloseCarbos.extra)} g</b></span><span class="total">Total <b>${fmtG(carbos)} g</b></span></div>` : ''}
       Por Comida: <strong>${dosisComida} U</strong> (${fmtG(carbos)} g ÷ R${ratio})<br>
-      Por Energía: <strong>${dosisCorreccion} U</strong> (Ideal: ${metaRestar} | FC: ${fc})
+      Corrección: <strong>${dosisCorreccion} U</strong> (Ideal: ${metaRestar} | FC: ${fc})
       ${ajusteTendencia}
       ${protocoloClinicoHTML}
-    </div>
-    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 12px;">
-      ${btnAtras}${btnAdel}
     </div>`;
     
   resDiv.style.display = "block"; 
