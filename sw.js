@@ -1,6 +1,6 @@
-const CACHE_NAME = 'polar-elite-cache-v9';
-// La app ya instalada guardaba polar-elite-cache-v8-notas-comidas (y el paquete
-// traía v7). v9 es posterior a ambas: al activarse se borran todas las demás.
+const CACHE_NAME = 'polar-elite-cache-v10';
+// v10 sustituye a v9 (y a cualquier caché anterior, incluida v8-notas-comidas).
+// Al activarse se borran las demás para que la PWA de iOS/Safari cargue esta versión.
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,7 +10,7 @@ const ASSETS_TO_CACHE = [
   './icon-512.png',
   './icon-maskable-512.png',
   './styles.css',
-  './styles.css?v=8',
+  './styles.css?v=10',
   './app.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
@@ -33,8 +33,8 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. ACTIVACIÓN: borra la caché v8 (y cualquier otra) y recarga las ventanas
-//    que seguían mostrando el app.js truncado.
+// 2. ACTIVACIÓN: borra cualquier caché que no sea v10 y recarga las ventanas
+//    que seguían mostrando una versión anterior.
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();

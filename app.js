@@ -1598,7 +1598,7 @@ function autoFocoCarbos() {
   }
 }
 
-function ciclarEjercicio() {
+function ciclarEjercicio(desdeHistorial) {
   estadoEjercicio = (estadoEjercicio + 1) % 3; 
   const btn = document.getElementById('btn-ejercicio'); 
   const input = document.getElementById('ejercicio');
@@ -1621,8 +1621,15 @@ function ciclarEjercicio() {
       btn.style.setProperty('color', '#FFFFFF', 'important'); 
       input.value = "0.5"; 
   }
-  dormirPolar(); 
-  calcular(false);
+  dormirPolar();
+  // El botón de actividad solo cambia la selección. El cálculo espera a "Calcular Dosis".
+  // Desde el historial sí se recalcula, para restaurar la dosis de ese paso.
+  if (desdeHistorial === true) {
+    calcular(false);
+    return;
+  }
+  const res = document.getElementById('resultado');
+  if (res) res.style.display = 'none';
 }
 
 function navegarCalculos(dir) {
@@ -1636,7 +1643,7 @@ function navegarCalculos(dir) {
       document.getElementById('meta').value = est.meta; 
       if (document.getElementById('grasas-toggle')) { document.getElementById('grasas-toggle').checked = !!est.grasas; actualizarDesgloseCarbos(); }
       estadoEjercicio = est.estadoEjercicio - 1; 
-      ciclarEjercicio(); 
+      ciclarEjercicio(true); 
       if(est.tendencia) { setTendencia(est.tendencia, true); } else { setTendencia('estable', true); }
   }
 }
