@@ -82,7 +82,6 @@ function switchTab(tabId) {
   } 
   else if (tabId === 'historial') {
     document.getElementById('view-historial').style.display = 'block';
-    if (radar) radar.style.display = 'block';
     document.getElementById('nav-historial').classList.add('active');
     actualizarVistaHistorial();
   } 
@@ -1373,13 +1372,6 @@ function guardarDosisAplicada(e, dosis, glucosa, carbos, tipoComida, carbosBase,
 
   actualizarRadar();
   switchTab('home');
-}
-
-function mostrarSelectorMeta() {
-  const bloque = document.getElementById('bloque-meta');
-  const btn = document.getElementById('btn-cambiar-meta');
-  if (bloque) bloque.hidden = false;
-  if (btn) btn.hidden = true;
 }
 
 function actualizarVistaHistorial() {
