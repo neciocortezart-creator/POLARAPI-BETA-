@@ -53,7 +53,12 @@ body { background-color: var(--bg-polar); color: var(--text-primary); padding: 2
 .btn-ver { display: block; margin: -4px 0 8px auto; background: none; border: none; color: var(--turquoise-strong); font-weight: 800; font-size: 13px; cursor: pointer; }
 #login-error { display: none; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,59,48,0.1); color: #C62828; font-size: 13px; font-weight: 800; text-align: left; }
 #login-ok { display: none; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(8,131,135,0.12); color: #086466; font-size: 13px; font-weight: 800; text-align: left; }
-.login-box .aviso-medico, .aviso-medico { font-size: 12px; font-weight: 800; line-height: 1.35; color: var(--text-primary); opacity: 1; background: rgba(8,131,135,0.08); border-radius: 12px; padding: 8px 10px; margin: 0 0 12px; text-align: left; }
+.login-box .aviso-medico, .aviso-medico { font-size: 12px; font-weight: 800; line-height: 1.35; color: var(--text-primary); opacity: 1; background: rgba(8,131,135,0.08); border-radius: 12px; padding: 8px 10px; margin: 0 0 8px; text-align: left; }
+.link-donar { display: block; margin: 0 0 12px; text-align: center; font-size: 12px; font-weight: 800; color: var(--turquoise-strong); text-decoration: none; opacity: 0.8; }
+.donar-card { margin-top: 16px; padding: 14px; border-radius: 16px; background: var(--bg-polar); color: var(--text-primary); border: 1px solid var(--input-border); text-align: left; }
+.card-settings .donar-card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 900; color: var(--turquoise-strong); }
+.card-settings .donar-card p { margin: 0 0 10px; font-size: 13px; font-weight: 700; line-height: 1.35; color: var(--text-primary); opacity: 1; }
+.btn-donar { display: flex; align-items: center; justify-content: center; min-height: 44px; width: 100%; padding: 10px 14px; border-radius: 12px; background: var(--turquoise-strong); color: var(--btn-text); font-weight: 900; font-size: 15px; text-decoration: none; }
 .aviso-check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; font-weight: 800; text-align: left; margin: 8px 0; }
 .aviso-check input { width: 20px; min-width: 20px; height: 20px; margin: 0; }
 .aviso-config { background: #fff4f2; color: #9b2c2c; border: 2px solid #ffb4a8; border-radius: 14px; padding: 10px 12px; font-size: 13px; font-weight: 800; line-height: 1.35; }
@@ -220,7 +225,8 @@ select.select-small { padding: 10px; font-size: 14px; background: var(--input-bg
 .icon-26 { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
 .btn-close-panel { background: none; border: none; font-size: 28px; font-weight: 900; cursor: pointer; line-height: 1; padding: 0; }
 
-.btn-menu-lateral { background: var(--white); color: var(--text-primary); margin: 0 0 16px 0; font-size: 16px; border: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); width: 100%; padding: 12px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: transform 0.2s; }
+.btn-menu-lateral { background: var(--white); color: var(--text-primary); margin: 0 0 16px 0; font-size: 16px; border: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); width: 100%; padding: 12px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: transform 0.2s; text-decoration: none; }
+a.btn-menu-lateral { color: var(--text-primary); }
 .btn-menu-lateral:active { transform: scale(0.95); }
 
 .input-emergencia { border-radius: 10px; border: none; padding: 10px; font-weight: 900; margin-bottom: 10px; width: 100%; display: block; font-size: 14px;}

@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 
   <style>
     /* Área táctil amplia y respuesta instantánea al toque en iPhone */
@@ -84,6 +84,7 @@
     <h2>Polar</h2>
     <p id="login-subtitulo">Calculadora de carbohidratos e insulina</p>
     <p class="aviso-medico">Polar es una herramienta de apoyo. No reemplaza las indicaciones de tu médico.</p>
+    <a class="link-donar" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoya Polar</a>
     <div id="login-ok" role="status"></div>
     <div id="login-error" role="alert"></div>
 
@@ -153,6 +154,8 @@
       <button class="btn-small bg-rojo-alerta" style="flex: 1; padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 800; border: none; cursor: pointer; color: white;" onclick="generarPDFElite()">PDF Analítico</button>
       <button class="btn-small" style="flex: 1; padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 800; background: var(--text-primary); color: white; border: none; cursor: pointer;" onclick="cerrarSesion()">Cerrar Sesión</button>
     </div>
+
+    <a class="btn-menu-lateral" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoya Polar ☕</a>
 
     <button class="btn-menu-lateral" onclick="switchTab('graficas');">
       <div class="icon-24">
@@ -469,6 +472,12 @@
         <button type="button" id="btn-reintentar-config" class="btn-accent" style="display:none; margin-top: 8px; background: #C62828;" onclick="reintentarGuardarConfig()">Reintentar subida</button>
         
         <button id="btn-guardar-config" class="btn-accent" style="margin-top: 10px; background: var(--turquoise-strong); padding: 12px; font-size: 16px; border-radius: 12px;" onclick="guardarConfig()">Guardar Todo</button>
+
+        <div class="donar-card" id="donar-card">
+          <h3>Apoya Polar</h3>
+          <p>Polar es gratis. Si te ayuda, puedes invitarnos un café para seguir mejorándola y mantenerla funcionando.</p>
+          <a class="btn-donar" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Donar en Ko-fi</a>
+        </div>
       </div>
     </div>
 
@@ -525,7 +534,7 @@
 </div>
 
 <!-- LÓGICA DE LA APP -->
-<script src="app.js?v=16"></script>
+<script src="app.js?v=17"></script>
 
 <!-- CIERRE INMEDIATO Y DESENFOQUE PROFESIONAL -->
 <script>
