@@ -463,13 +463,14 @@ button:disabled { opacity: .45; }
 }
 .nav-item svg { width: 18px; height: 18px; }
 .nav-item.active { transform: none; }
-#main-calculator .card-meta { padding: 8px 12px; }
-#main-calculator .card-meta label { margin-bottom: 4px; font-size: 14px; font-weight: 800; }
-#meta {
-  text-overflow: clip;
-  padding-right: 12px !important;
-  font-size: 16px !important;
+#main-calculator .card-glucose { display: flex; flex-direction: column; }
+#main-calculator .card-glucose .label-small { margin-top: auto; }
+#meta.select-small {
+  font-size: 11px !important;
   font-weight: 800;
+  letter-spacing: -0.03em;
+  padding: 8px 6px !important;
+  text-overflow: clip;
 }
 .filtro-fecha { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; }
 .filtro-fecha label { margin: 0; font-size: 14px; font-weight: 800; white-space: nowrap; }

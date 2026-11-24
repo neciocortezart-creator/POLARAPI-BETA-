@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 
   <style>
     /* Área táctil amplia y respuesta instantánea al toque en iPhone */
@@ -171,6 +171,8 @@
         
         <input type="hidden" id="tendencia" value="estable">
 
+        <label for="meta" class="label-small" style="color: inherit; font-size: 14px;">Cambiar meta</label>
+        <select id="meta" class="select-small" onchange="calcular(false)"></select>
       </div>
 
       <div class="card card-carbs" style="display: flex; flex-direction: column; gap: 6px;">
@@ -185,11 +187,6 @@
         <label style="font-size: 15px; margin-bottom: 2px; margin-top: 2px; text-align: center; width: 100%; display: block; color: inherit;">¿Correrá mucho?</label>
         <input type="hidden" id="ejercicio" value="1">
         <button type="button" id="btn-ejercicio" class="btn-accent" style="padding: 10px 16px; font-size: 15px; margin: 0; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.15); background: #4CAF50; color: #FFFFFF; border-radius: 12px; font-weight: 900;" onclick="ciclarEjercicio()">Tranquilo</button>
-      </div>
-
-      <div class="card card-meta card-full">
-        <label for="meta">Cambiar meta</label>
-        <select id="meta" onchange="calcular(false)"></select>
       </div>
 
       <div class="card card-carbs card-full card-grasas">
@@ -414,7 +411,7 @@
 </div>
 
 <!-- LÓGICA DE LA APP -->
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 
 <!-- CIERRE INMEDIATO Y DESENFOQUE PROFESIONAL -->
 <script>
