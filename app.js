@@ -3,6 +3,38 @@ const supabaseUrl = 'https://rgwawwdldqodzmsizean.supabase.co';
 const supabaseKey = 'sb_publishable_-4Q07zNvB5Ep9fLwIZW6Yw_axmOPTM7';
 const polarDb = createClient ? createClient(supabaseUrl, supabaseKey) : null;
 
+// Claves internas estables: no se renombran ni se reescriben en Supabase ni en polar_config.
+// mam sigue siendo Once (cfg-r-mam; el ratio 0 no se toca). mpm era Merienda y ahora se muestra como Colación (cfg-r-mpm).
+const ORDEN_COMIDAS = ['desayuno', 'mpm', 'almuerzo', 'mam', 'cena'];
+
+const NOMBRES_COMIDA = {
+  desayuno: 'Desayuno',
+  mpm: 'Colación',
+  almuerzo: 'Almuerzo',
+  mam: 'Once',
+  cena: 'Cena',
+  corroborar: 'Revisión',
+  'post-comida': '2H Post'
+};
+
+function claveComida(tipo) {
+  if (tipo == null) return '';
+  const t = String(tipo).trim().toLowerCase();
+  if (!t) return '';
+  if (Object.prototype.hasOwnProperty.call(NOMBRES_COMIDA, t)) return t;
+  if (t === 'merienda' || t === 'merienda tarde' || t === 'merienda pm' || t === 'merienda-tarde' || t === 'colación' || t === 'colacion') return 'mpm';
+  if (t === 'once') return 'mam';
+  return t;
+}
+
+function etiquetaComida(tipo, variantes) {
+  if (!tipo && tipo !== 0) return 'Manual';
+  const clave = claveComida(tipo);
+  if (variantes && Object.prototype.hasOwnProperty.call(variantes, clave)) return variantes[clave];
+  if (Object.prototype.hasOwnProperty.call(NOMBRES_COMIDA, clave)) return NOMBRES_COMIDA[clave];
+  return 'Manual';
+}
+
 function switchTab(tabId) {
   const panelMenu = document.getElementById('panel-menu');
   const overlay = document.getElementById('panel-overlay');
@@ -88,10 +120,8 @@ function actualizarRadar() {
       return;
   }
 
-  const dict = { 'desayuno': 'Desayuno', 'mam': 'Once', 'almuerzo': 'Almuerzo', 'mpm': 'Merienda', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
-
   listaRadar.innerHTML = ultimosTres.map(reg => {
-      const nombreComida = dict[reg.tipoComida] || 'Manual';
+      const nombreComida = etiquetaComida(reg.tipoComida);
       const hora = reg.fecha.split(', ')[1] || reg.fecha;
       let colorGlucosa = 'var(--text-primary)';
       if(reg.glucosa < 70) colorGlucosa = '#FF3B30';
@@ -497,20 +527,16 @@ function renderDesgloseComidas(historialFiltrado, textCol) {
     const divComidas = document.getElementById('panel-comidas-stats');
     if(!divComidas) return;
 
-    let stats = {
-        desayuno: { sum: 0, count: 0 },
-        mam: { sum: 0, count: 0 },
-        almuerzo: { sum: 0, count: 0 },
-        mpm: { sum: 0, count: 0 },
-        cena: { sum: 0, count: 0 }
-    };
+    let stats = {};
+    ORDEN_COMIDAS.forEach(k => { stats[k] = { sum: 0, count: 0 }; });
     let totalValidos = 0;
 
     historialFiltrado.forEach(d => {
         let val = parseFloat(d.glucosa);
-        if (!isNaN(val) && stats.hasOwnProperty(d.tipoComida)) {
-            stats[d.tipoComida].sum += val;
-            stats[d.tipoComida].count++;
+        const clave = claveComida(d.tipoComida);
+        if (!isNaN(val) && Object.prototype.hasOwnProperty.call(stats, clave)) {
+            stats[clave].sum += val;
+            stats[clave].count++;
             totalValidos++;
         }
     });
@@ -520,7 +546,7 @@ function renderDesgloseComidas(historialFiltrado, textCol) {
         return;
     }
 
-    const nombres = { desayuno: 'Desayuno', mam: 'Once', almuerzo: 'Almuerzo', mpm: 'Merienda', cena: 'Cena' };
+    const nombres = { desayuno: 'Desayuno', mpm: 'Colación', almuerzo: 'Almuerzo', mam: 'Once', cena: 'Cena' };
     const colores = { desayuno: '#FCA311', mam: '#D84B79', almuerzo: '#4CAF50', mpm: '#5B9BD5', cena: '#A35496' };
 
     let html = `<h4 style="font-size: 15px; color: var(--turquoise-strong); margin-bottom: 12px; font-weight: 900;">Promedio de Energía por Comida</h4>`;
@@ -572,7 +598,6 @@ function buscarDiaEspecifico() {
         return;
     }
 
-    const dictNombres = { 'desayuno': 'Desayuno', 'mam': 'Once', 'almuerzo': 'Almuerzo', 'mpm': 'Merienda', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
     const dictColores = { 'desayuno': '#FCA311', 'mam': '#D84B79', 'almuerzo': '#4CAF50', 'mpm': '#5B9BD5', 'cena': '#A35496', 'corroborar': '#2C3A40', 'post-comida': '#088387' };
 
     const partesFecha = fechaSeleccionada.split('-');
@@ -583,8 +608,9 @@ function buscarDiaEspecifico() {
     registrosDelDia.sort((a, b) => a.timestamp - b.timestamp);
 
     registrosDelDia.forEach(reg => {
-        const nombreComida = dictNombres[reg.tipoComida] || 'Manual';
-        const colorEtiqueta = dictColores[reg.tipoComida] || '#2C3A40';
+        const clave = claveComida(reg.tipoComida);
+        const nombreComida = etiquetaComida(reg.tipoComida);
+        const colorEtiqueta = dictColores[clave] || '#2C3A40';
         
         let colorGlucosa = 'var(--text-primary)';
         if(reg.glucosa < 70) colorGlucosa = '#FF3B30';
@@ -1093,8 +1119,8 @@ function generarPDFElite() {
       <h3 style="color: #088387; margin-bottom: 12px; font-size: 18px; margin-top:0; font-weight: 900;">Esquema Médico Actual</h3>
       <ul style="font-size: 14px; line-height: 1.6; list-style: none; padding: 0; margin: 0; font-weight: 700;">
         <li><strong>Basal (Toujeo):</strong> ${config.toujeo} U</li>
-        <li><strong>Factores de Corrección:</strong> Des: ${config.fc.desayuno} | Once: ${config.fc.mam} | Alm: ${config.fc.almuerzo} | PM: ${config.fc.mpm} | Cena: ${config.fc.cena} | Rev: ${config.fc.corroborar}</li>
-        <li><strong>Ratios:</strong> Desayuno R${config.ratios.desayuno} | Once R${config.ratios.mam} | Almuerzo R${config.ratios.almuerzo} | PM R${config.ratios.mpm} | Cena R${config.ratios.cena}</li>
+        <li><strong>Factores de Corrección:</strong> Desayuno: ${config.fc.desayuno} | Colación: ${config.fc.mpm} | Almuerzo: ${config.fc.almuerzo} | Once: ${config.fc.mam} | Cena: ${config.fc.cena} | Rev: ${config.fc.corroborar}</li>
+        <li><strong>Ratios:</strong> Desayuno R${config.ratios.desayuno} | Colación R${config.ratios.mpm} | Almuerzo R${config.ratios.almuerzo} | Once R${config.ratios.mam} | Cena R${config.ratios.cena}</li>
       </ul>
     </div>`;
 
@@ -1116,11 +1142,9 @@ function generarPDFElite() {
         <tbody>`;
         
       const historialReverso = historial.slice().reverse();
-      const dict = { 'desayuno': 'Desayuno', 'mam': 'Once', 'almuerzo': 'Almuerzo', 'mpm': 'Merienda PM', 'cena': 'Cena', 'corroborar': 'Revisión', 'post-comida': '2H Post' };
-
       historialReverso.forEach((item, index) => {
         const bgRow = index % 2 === 0 ? '#FFFFFF' : '#F9F9F9';
-        const evento = item.tipoComida ? dict[item.tipoComida] : 'Manual';
+        const evento = item.tipoComida ? etiquetaComida(item.tipoComida) : 'Manual';
         
         let colorGlucosa = '#2C3A40';
         let pesoGlucosa = '700';
@@ -1209,7 +1233,7 @@ function determinarComidaAutomatica() {
 
   if (registrosHoy.length === 0) return 'desayuno';
 
-  const principales = registrosHoy.filter(r => ['desayuno', 'mam', 'almuerzo', 'mpm', 'cena'].includes(r.tipoComida));
+  const principales = registrosHoy.filter(r => ORDEN_COMIDAS.includes(claveComida(r.tipoComida)));
   if (principales.length === 0) return 'desayuno';
 
   const ultimaPrincipal = principales[principales.length - 1];
@@ -1219,8 +1243,8 @@ function determinarComidaAutomatica() {
   const yaCorroborado = corroboracionesPost.length > 0;
 
   const horasPasadas = (Date.now() - timestampUltima) / 3600000;
-  const secuencia = ['desayuno', 'mam', 'almuerzo', 'mpm', 'cena'];
-  const idx = secuencia.indexOf(ultimaPrincipal.tipoComida);
+  const secuencia = ORDEN_COMIDAS;
+  const idx = secuencia.indexOf(claveComida(ultimaPrincipal.tipoComida));
   const nextMeal = secuencia[(idx + 1) % secuencia.length];
 
   if (!yaCorroborado) {
@@ -1253,12 +1277,17 @@ function actualizarTextosComida() {
   const ratioMpm = document.getElementById('cfg-r-mpm') ? document.getElementById('cfg-r-mpm').value : config.ratios.mpm;
   const ratioCena = document.getElementById('cfg-r-cena') ? document.getElementById('cfg-r-cena').value : config.ratios.cena;
 
-  s.options[0].text = `DESAYUNO (R${ratioDes})`; 
-  s.options[1].text = `ONCE (R${ratioMam})`; 
-  s.options[2].text = `ALMUERZO (R${ratioAlm})`; 
-  s.options[3].text = `MERIENDA TARDE (R${ratioMpm})`; 
-  s.options[4].text = `CENA (R${ratioCena})`; 
-  if(s.options[5]) s.options[5].text = `CORROBORAR (SOLO CORRECCIÓN)`;
+  const textoOpcion = {
+    desayuno: `DESAYUNO (R${ratioDes})`,
+    mpm: `COLACIÓN (R${ratioMpm})`,
+    almuerzo: `ALMUERZO (R${ratioAlm})`,
+    mam: `ONCE (R${ratioMam})`,
+    cena: `CENA (R${ratioCena})`,
+    corroborar: `CORROBORAR (SOLO CORRECCIÓN)`
+  };
+  Array.from(s.options).forEach(opt => {
+    if (textoOpcion[opt.value]) opt.text = textoOpcion[opt.value];
+  });
   
   const meal = s.value;
   const inputActivo = document.getElementById(RATIO_INPUT_IDS[meal] || ('cfg-r-' + meal));
@@ -1352,13 +1381,12 @@ function actualizarVistaHistorial() {
     lista.innerHTML = '<div class="estado-vacio"><div class="estado-vacio-icono">🐻‍❄️</div><strong>Aún no hay registros</strong><span>Cuando guardes una dosis, aparecerá aquí.</span></div>'; 
     return; 
   }
-  const dict = { 'desayuno': 'Desayuno', 'mam': 'Once', 'almuerzo': 'Almuerzo', 'mpm': 'Merienda tarde', 'cena': 'Cena', 'corroborar': 'Corroboración', 'post-comida': '2 Horas Post-Comida' };
   let html = ''; 
   let fechaAgrupada = ''; 
   const hOrd = historial.slice(); 
   
   hOrd.forEach(item => {
-    const nom = item.tipoComida ? dict[item.tipoComida] : 'Manual'; 
+    const nom = item.tipoComida ? etiquetaComida(item.tipoComida, { corroborar: 'Corroboración', 'post-comida': '2 Horas Post-Comida' }) : 'Manual'; 
     const partes = item.fecha.split(', '); 
     const dS = partes[0]; 
     const hS = partes[1] || item.fecha;

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'polar-elite-cache-v11';
-// v11 sustituye a v10 (y a cualquier caché anterior, incluida v8-notas-comidas).
+const CACHE_NAME = 'polar-elite-cache-v12';
+// v12 sustituye a v11 (y a cualquier caché anterior, incluida v8-notas-comidas).
 // Al activarse se borran las demás para que la PWA de iOS/Safari cargue esta versión.
 const ASSETS_TO_CACHE = [
   './',
@@ -12,6 +12,7 @@ const ASSETS_TO_CACHE = [
   './styles.css',
   './styles.css?v=11',
   './app.js',
+  './app.js?v=12',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
   'https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap'
@@ -33,7 +34,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. ACTIVACIÓN: borra cualquier caché que no sea v11 y recarga las ventanas
+// 2. ACTIVACIÓN: borra cualquier caché que no sea v12 y recarga las ventanas
 //    que seguían mostrando una versión anterior.
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {

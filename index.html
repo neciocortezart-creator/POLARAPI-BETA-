@@ -162,9 +162,9 @@
         <label for="comida" style="color: var(--turquoise-strong); font-weight: 900; font-size: 20px;">Agregar comida</label>
         <select id="comida" onchange="actualizarTextosComida(); this.dataset.manual = 'true'; calcular(false);">
           <option value="desayuno">DESAYUNO</option>
-          <option value="mam">ONCE</option>
+          <option value="mpm">COLACIÓN</option>
           <option value="almuerzo">ALMUERZO</option>
-          <option value="mpm">MERIENDA TARDE</option>
+          <option value="mam">ONCE</option>
           <option value="cena">CENA</option>
           <option value="corroborar">CORROBORAR</option>
         </select>
@@ -346,9 +346,9 @@
         <h3 style="color: var(--turquoise-strong); font-size: 15px; margin-top: 10px; margin-bottom: 8px;">Factores de Corrección (1U baja X mg/dL)</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
           <div><label>FC Desayuno</label><input type="number" id="cfg-fc-desayuno" value="30" inputmode="decimal" step="any"></div>
-          <div><label>FC Once</label><input type="number" id="cfg-fc-mam" value="30" inputmode="decimal" step="any"></div>
+          <div><label>FC Colación</label><input type="number" id="cfg-fc-mpm" value="30" inputmode="decimal" step="any"></div>
           <div><label>FC Almuerzo</label><input type="number" id="cfg-fc-alm" value="30" inputmode="decimal" step="any"></div>
-          <div><label>FC Merienda PM</label><input type="number" id="cfg-fc-mpm" value="30" inputmode="decimal" step="any"></div>
+          <div><label>FC Once</label><input type="number" id="cfg-fc-mam" value="30" inputmode="decimal" step="any"></div>
           <div><label>FC Cena</label><input type="number" id="cfg-fc-cena" value="30" inputmode="decimal" step="any"></div>
           <div><label>FC Corroborar</label><input type="number" id="cfg-fc-corroborar" value="30" inputmode="decimal" step="any"></div>
         </div>
@@ -362,9 +362,9 @@
         <h3>Ratios (Por 1U)</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
           <div><label>Desayuno</label><input type="number" id="cfg-r-desayuno" value="4" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
-          <div><label>Once</label><input type="number" id="cfg-r-mam" value="0" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
+          <div><label>Colación</label><input type="number" id="cfg-r-mpm" value="5" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
           <div><label>Almuerzo</label><input type="number" id="cfg-r-alm" value="5" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
-          <div><label>Merienda PM</label><input type="number" id="cfg-r-mpm" value="5" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
+          <div><label>Once</label><input type="number" id="cfg-r-mam" value="0" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
           <div style="grid-column: span 2;"><label>Cena</label><input type="number" id="cfg-r-cena" value="14" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
           <div style="grid-column: span 2;"><label>Extra por grasas (% a los carbohidratos)</label><input type="number" id="cfg-factor-grasas" value="30" inputmode="decimal" step="any" min="0" max="100"></div>
         </div>
@@ -447,7 +447,7 @@
 </div>
 
 <!-- LÓGICA DE LA APP -->
-<script src="app.js"></script>
+<script src="app.js?v=12"></script>
 
 <!-- CIERRE INMEDIATO Y DESENFOQUE PROFESIONAL -->
 <script>
