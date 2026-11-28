@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!--
+  Copyright (c) 2026 Deivis Cortez (Necio).
+  Polar. Todos los derechos reservados. / All rights reserved.
+  Queda prohibida la copia, modificación, distribución o reutilización
+  del código, el diseño, el nombre «Polar» o los recursos sin autorización escrita.
+  Ver LICENSE.
+-->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -24,7 +31,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="styles.css?v=20">
 
   <style>
     /* Área táctil amplia y respuesta instantánea al toque en iPhone */
@@ -77,6 +84,7 @@
 </div>
 
 <div id="login-screen">
+  <div class="login-equilibrio" aria-hidden="true"></div>
   <div class="login-box">
     <div style="width: 64px; height: 64px; background: var(--turquoise-strong); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; box-shadow: 0 12px 30px rgba(8,131,135,0.35);">
       <svg viewBox="0 0 100 100" width="80%" height="80%" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="40" r="16" fill="#FFFFFF"/><circle cx="72" cy="40" r="16" fill="#FFFFFF"/><path d="M 10 95 A 40 40 0 0 1 90 95 Z" fill="#FFFFFF"/><circle cx="38" cy="70" r="4.5" fill="#2C3A40"/><circle cx="62" cy="70" r="4.5" fill="#2C3A40"/><ellipse cx="50" cy="82" rx="7" ry="4" fill="#2C3A40"/></svg>
@@ -137,6 +145,8 @@
       </div>
     </div>
   </div>
+  <div class="login-equilibrio" aria-hidden="true"></div>
+  <footer class="aviso-derechos">© 2026 Polar · Deivis Cortez. Todos los derechos reservados.</footer>
 </div>
 
 <div id="main-app">
@@ -157,6 +167,13 @@
     </div>
 
     <a class="btn-menu-lateral" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoya Polar ☕</a>
+
+    <button type="button" class="btn-menu-lateral" onclick="switchTab('guia')">
+      <div class="icon-24">
+        <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9a2.5 2.5 0 1 1 3.2 2.4c-.8.3-1.2 1-1.2 1.8V14"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      </div>
+      Cómo usar Polar
+    </button>
 
     <button class="btn-menu-lateral" onclick="switchTab('citas');">
       <div class="icon-24">
@@ -194,6 +211,14 @@
         <button id="btn-usuario-nombre" class="icon-btn" onclick="switchTab('usuario')">Perfil</button>
       </div>
     </div>
+
+    <aside id="tip-primeros-pasos" class="tip-primeros" hidden>
+      <p><strong>Primeros pasos.</strong> ¿Quieres ver cómo se usa Polar?</p>
+      <div class="tip-primeros-acciones">
+        <button type="button" class="tip-abrir" onclick="abrirGuiaDesdeTip()">Ver la guía</button>
+        <button type="button" class="btn-link" onclick="cerrarTipGuia()">Ahora no</button>
+      </div>
+    </aside>
 
     <!-- CALCULADORA PRINCIPAL CON FORMULARIO -->
     <form class="grid" id="main-calculator" onsubmit="event.preventDefault(); window.__polarCalculoBoton = true; if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); calcular(false); window.__polarCalculoBoton = false; return false;">
@@ -415,7 +440,8 @@
             Esquema actual
           </div>
         </h3>
-        
+        <button type="button" class="btn-link guia-config-link" onclick="switchTab('guia')">Cómo usar Polar</button>
+
         <button id="btn-toggle-redondeo" class="btn-small" style="background: var(--turquoise-strong); color: white; margin-bottom: 14px; font-weight: 900; font-size: 14px; width: 100%; padding: 12px; border-radius: 12px;" onclick="toggleRedondeo()">redondeo activado</button>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
@@ -498,6 +524,96 @@
           </div>
         </aside>
       </div>
+      <footer class="aviso-derechos">© 2026 Polar · Deivis Cortez. Todos los derechos reservados.</footer>
+    </div>
+
+    <div id="view-guia" style="display: none;">
+      <div class="card card-settings card-full" id="panel-guia" style="display: block;">
+        <h3 class="panel-header-small">
+          <span>Cómo usar Polar</span>
+          <button type="button" class="btn-close-panel" onclick="switchTab(config.setupCompleto ? 'home' : 'setup')" aria-label="Cerrar guía">×</button>
+        </h3>
+        <p class="guia-aviso">Polar es una ayuda y no reemplaza las indicaciones de tu médico. Configura tus valores con tu equipo de salud.</p>
+        <ol class="guia-pasos">
+          <li class="guia-paso">
+            <span class="guia-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></span>
+            <div>
+              <h4>1. Crea tu cuenta</h4>
+              <p>Toca Crear cuenta. Escribe tu correo y una contraseña de al menos 8 caracteres. Revisa tu correo, confírmalo y después entra con Acceder.</p>
+            </div>
+          </li>
+          <li class="guia-paso">
+            <span class="guia-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"></rect><path d="M9 3.5h6V6H9zM8 10h8M8 14h8M8 18h5"></path></svg></span>
+            <div>
+              <h4>2. Primera configuración</h4>
+              <p>Anota los números que te dio tu equipo de salud. El ratio es cuántos gramos cubre 1 unidad, en Desayuno, Colación, Almuerzo, Once y Cena. El factor de sensibilidad es cuántos mg/dL baja 1 unidad: al principio se usa el mismo en todas las comidas. Las metas son tu glucosa antes de comer y la de corrección. Toujeo u otra basal, y el contacto de emergencia, son opcionales. Acepta el aviso y guarda.</p>
+            </div>
+          </li>
+          <li class="guia-paso">
+            <span class="guia-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"></path></svg></span>
+            <div>
+              <h4>3. Calcula la dosis</h4>
+              <p>En Inicio elige la comida. Escribe la glucosa y los carbos. Si vas a moverte, toca el botón de actividad: Tranquilo, Un poco o Mucho. Si la comida tiene grasas, activa Comida con grasas: Polar suma el porcentaje de Configuración. Después toca Calcular Dosis. Si solo vas a corregir, elige Corroborar.</p>
+            </div>
+          </li>
+          <li class="guia-paso">
+            <span class="guia-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"></path></svg></span>
+            <div>
+              <h4>4. Guarda y revisa</h4>
+              <p>En el resultado toca Guardar Dosis. En Guardados ves lo que guardaste. Arriba, Últimos Registros muestra los tres más nuevos.</p>
+            </div>
+          </li>
+          <li class="guia-paso">
+            <span class="guia-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"></path><path d="M8 15l4-5 3 3 5-7"></path></svg></span>
+            <div>
+              <h4>5. Gráficos y PDF</h4>
+              <p>En Gráficos ves la curva de la semana. Toca un punto para ver la glucosa y la hora. En el menú, PDF arma un reporte para tu médico.</p>
+            </div>
+          </li>
+          <li class="guia-paso">
+            <span class="guia-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><path d="M3.5 19c.4-3 2.6-4.5 5.5-4.5s5.1 1.5 5.5 4.5"></path><circle cx="17" cy="9" r="2.2"></circle><path d="M15.5 14.6c1.8.4 3.2 1.5 3.8 3.4"></path></svg></span>
+            <div>
+              <h4>6. Compañeros</h4>
+              <p>Toca el oso de arriba. El Oso Polar ya está contigo. Los demás se desbloquean con registros cuya glucosa queda dentro de tus metas. El último pide 7 días seguidos en meta.</p>
+            </div>
+          </li>
+        </ol>
+        <h3 id="guia-faq" class="guia-faq-titulo">Preguntas frecuentes</h3>
+        <div class="guia-faq">
+          <details>
+            <summary>¿Qué es el ratio?</summary>
+            <p>Es cuántos gramos de carbohidrato cubre 1 unidad en esa comida. Polar divide los carbos por ese número para la parte de la comida. Lo anotas en Desayuno, Colación, Almuerzo, Once y Cena, y lo puedes cambiar en Configuración.</p>
+          </details>
+          <details>
+            <summary>¿Qué es el factor de sensibilidad?</summary>
+            <p>Es cuántos mg/dL baja 1 unidad. Si tu glucosa está sobre la meta, Polar usa ese factor para la corrección. En la primera configuración pones uno solo, para todas las comidas. En Configuración puedes dejar uno distinto en cada comida, también en Corroborar.</p>
+          </details>
+          <details>
+            <summary>¿Por qué no me deja calcular?</summary>
+            <p>Falta un dato. Tiene que estar lista la primera configuración, con el ratio de esa comida y un factor mayor que 0. El aviso lo dice y tiene el botón Ir a Configuración. Escribe la glucosa o los carbos y toca Calcular Dosis.</p>
+          </details>
+          <details>
+            <summary>Olvidé mi contraseña</summary>
+            <p>En la entrada toca Olvidé mi contraseña y escribe tu correo. Si está registrado, te llega un enlace. Ábrelo y elige una contraseña nueva, de al menos 8 caracteres.</p>
+          </details>
+          <details>
+            <summary>¿Mis datos son privados?</summary>
+            <p>Entras con tu correo. En la app ves tus registros y tu configuración, no los de otra cuenta. Con internet se guardan en tu cuenta. Si no hay red, quedan en este teléfono y Polar intenta subirlos después. Al cerrar sesión se borran de este teléfono.</p>
+          </details>
+          <details>
+            <summary>¿Cómo la instalo en el celular?</summary>
+            <p>Si arriba aparece Instalar, tócalo. Si el celular no la instala solo, agrégala a la pantalla de inicio desde el navegador. En iPhone, ábrela en Safari.</p>
+          </details>
+          <details>
+            <summary>¿Cómo apoyo a Polar?</summary>
+            <p>Polar es gratis. Si te ayuda, toca Apoya Polar. El enlace está en el menú, en Inicio y en Configuración.</p>
+          </details>
+          <details>
+            <summary>¿Puedo borrar mi cuenta?</summary>
+            <p>Desde la app no se borra la cuenta. Cerrar sesión saca tus datos de este teléfono. En Guardados, Borrar Todo el Historial elimina los registros: te pide tu contraseña o escribir BORRAR. El correo de la cuenta sigue existiendo.</p>
+          </details>
+        </div>
+      </div>
     </div>
 
     <div id="view-avatars" style="display: none;">
@@ -551,7 +667,7 @@
 </div>
 
 <!-- LÓGICA DE LA APP -->
-<script src="app.js?v=19"></script>
+<script src="app.js?v=20"></script>
 
 <!-- CIERRE INMEDIATO Y DESENFOQUE PROFESIONAL -->
 <script>
