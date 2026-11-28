@@ -167,12 +167,13 @@ function switchTab(tabId) {
 
   const radar = document.getElementById('radar-precision');
   if (radar) radar.style.display = 'none';
+  const donarInicio = document.querySelector('.donar-card-inicio');
+  if (donarInicio) donarInicio.style.display = tabId === 'home' ? 'flex' : 'none';
 
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
   if (tabId === 'home') {
-    document.getElementById('main-calculator').style.display = 'grid'; 
-    if (radar) radar.style.display = 'block';
+    document.getElementById('main-calculator').style.display = 'grid';
     document.getElementById('nav-home').classList.add('active');
     if (typeof actualizarAvisoCalculo === 'function') actualizarAvisoCalculo();
     
@@ -187,6 +188,7 @@ function switchTab(tabId) {
   } 
   else if (tabId === 'historial') {
     document.getElementById('view-historial').style.display = 'block';
+    if (radar) radar.style.display = 'block';
     document.getElementById('nav-historial').classList.add('active');
     actualizarVistaHistorial();
   } 

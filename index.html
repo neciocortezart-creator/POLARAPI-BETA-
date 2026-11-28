@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=18">
 
   <style>
     /* Área táctil amplia y respuesta instantánea al toque en iPhone */
@@ -253,20 +253,33 @@
     <!-- VENTANA MODAL DE RESULTADO: FUERA DEL FORMULARIO -->
     <div id="resultado" class="result-box"></div>
 
-    <!-- RADAR: ÚLTIMOS REGISTROS -->
-    <div id="radar-precision" style="display: none; margin-bottom: 20px; padding: 16px; background: var(--white); border-radius: var(--radius); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03);">
-      <h3 class="panel-header-small" style="margin-bottom: 12px; font-size: 16px;">
-        <div class="title-flex">
-          <div class="icon-24">
-            <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-          </div>
-          Últimos Registros
-        </div>
-      </h3>
-      <div id="lista-radar" style="display: flex; flex-direction: column; gap: 8px;"></div>
-    </div>
+    <aside class="donar-card donar-card-inicio">
+      <svg class="donar-oso" viewBox="0 0 120 96" aria-hidden="true">
+        <rect x="2" y="2" width="116" height="92" rx="18" fill="#088387"/>
+        <rect x="34" y="44" width="46" height="22" rx="3" fill="#2C3A40"/>
+        <rect x="37" y="47" width="40" height="14" rx="2" fill="#FAF8F5"/>
+        <rect x="41" y="51" width="16" height="2" rx="1" fill="#088387"/>
+        <rect x="41" y="55" width="26" height="2" rx="1" fill="#C9D6D6"/>
+        <path d="M30 66 h54 l6 8 H24 z" fill="#2C3A40"/>
+        <circle cx="48" cy="30" r="8" fill="#FFFFFF"/>
+        <circle cx="74" cy="30" r="8" fill="#FFFFFF"/>
+        <circle cx="61" cy="40" r="18" fill="#FFFFFF"/>
+        <circle cx="55" cy="38" r="2.2" fill="#2C3A40"/>
+        <circle cx="67" cy="38" r="2.2" fill="#2C3A40"/>
+        <ellipse cx="61" cy="44" rx="3.4" ry="2.2" fill="#2C3A40"/>
+        <ellipse cx="49" cy="60" rx="6" ry="3.2" fill="#FFFFFF"/>
+        <ellipse cx="73" cy="60" rx="6" ry="3.2" fill="#FFFFFF"/>
+        <rect x="92" y="52" width="14" height="16" rx="3" fill="#FFFFFF"/>
+        <path d="M106 56 h3.5 a4 4 0 0 1 0 8 H106" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+        <rect x="94.5" y="55" width="9" height="7" rx="1.5" fill="#F3C623"/>
+        <path d="M97 48 q2-4 0-7" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M102 48 q2-4 0-7" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <div class="donar-cuerpo">
+        <p>Polar es gratis. Si te ayuda, puedes invitarnos un café para seguir mejorándola y mantenerla funcionando.</p>
+        <a class="btn-donar" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoyar Polar ☕</a>
+      </div>
+    </aside>
 
     <div id="view-setup" style="display: none;">
       <div class="card card-settings card-full" id="panel-setup" style="display: block;">
@@ -337,6 +350,19 @@
              Guardados
           </div>
         </h3>
+        <div id="radar-precision">
+          <h3 class="panel-header-small" style="margin-bottom: 12px; font-size: 16px;">
+            <div class="title-flex">
+              <div class="icon-24">
+                <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              Últimos Registros
+            </div>
+          </h3>
+          <div id="lista-radar" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
         <div class="filtro-fecha">
           <label for="filtro-fecha-historial">Fecha</label>
           <input type="date" id="filtro-fecha-historial" onchange="actualizarVistaHistorial()">
@@ -443,11 +469,33 @@
         
         <button id="btn-guardar-config" class="btn-accent" style="margin-top: 10px; background: var(--turquoise-strong); padding: 12px; font-size: 16px; border-radius: 12px;" onclick="guardarConfig()">Guardar Todo</button>
 
-        <div class="donar-card" id="donar-card">
-          <h3>Apoya Polar</h3>
-          <p>Polar es gratis. Si te ayuda, puedes invitarnos un café para seguir mejorándola y mantenerla funcionando.</p>
-          <a class="btn-donar" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Donar en Ko-fi</a>
-        </div>
+        <aside class="donar-card">
+          <svg class="donar-oso" viewBox="0 0 120 96" aria-hidden="true">
+            <rect x="2" y="2" width="116" height="92" rx="18" fill="#088387"/>
+            <rect x="34" y="44" width="46" height="22" rx="3" fill="#2C3A40"/>
+            <rect x="37" y="47" width="40" height="14" rx="2" fill="#FAF8F5"/>
+            <rect x="41" y="51" width="16" height="2" rx="1" fill="#088387"/>
+            <rect x="41" y="55" width="26" height="2" rx="1" fill="#C9D6D6"/>
+            <path d="M30 66 h54 l6 8 H24 z" fill="#2C3A40"/>
+            <circle cx="48" cy="30" r="8" fill="#FFFFFF"/>
+            <circle cx="74" cy="30" r="8" fill="#FFFFFF"/>
+            <circle cx="61" cy="40" r="18" fill="#FFFFFF"/>
+            <circle cx="55" cy="38" r="2.2" fill="#2C3A40"/>
+            <circle cx="67" cy="38" r="2.2" fill="#2C3A40"/>
+            <ellipse cx="61" cy="44" rx="3.4" ry="2.2" fill="#2C3A40"/>
+            <ellipse cx="49" cy="60" rx="6" ry="3.2" fill="#FFFFFF"/>
+            <ellipse cx="73" cy="60" rx="6" ry="3.2" fill="#FFFFFF"/>
+            <rect x="92" y="52" width="14" height="16" rx="3" fill="#FFFFFF"/>
+            <path d="M106 56 h3.5 a4 4 0 0 1 0 8 H106" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+            <rect x="94.5" y="55" width="9" height="7" rx="1.5" fill="#F3C623"/>
+            <path d="M97 48 q2-4 0-7" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M102 48 q2-4 0-7" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <div class="donar-cuerpo">
+            <p>Polar es gratis. Si te ayuda, puedes invitarnos un café para seguir mejorándola y mantenerla funcionando.</p>
+            <a class="btn-donar" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoyar Polar ☕</a>
+          </div>
+        </aside>
       </div>
     </div>
 
@@ -501,7 +549,7 @@
 </div>
 
 <!-- LÓGICA DE LA APP -->
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 
 <!-- CIERRE INMEDIATO Y DESENFOQUE PROFESIONAL -->
 <script>
