@@ -294,6 +294,7 @@ async function sincronizarDatosNube() {
       if (typeof actualizarVistaHistorial === 'function') actualizarVistaHistorial();
     }
     actualizarRadar();
+    if (typeof revisarAvatares === 'function') revisarAvatares(true);
   }
 }
 
@@ -1056,77 +1057,179 @@ const svgUnicornio = `<svg viewBox="0 0 100 100" width="100%" height="100%" xmln
 const svgDragon = `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><polygon points="30,45 50,20 70,45" fill="#F05A4A"/><polygon points="10,60 25,35 40,60" fill="#F05A4A"/><polygon points="90,60 75,35 60,60" fill="#F05A4A"/><path d="M 10 95 A 40 40 0 0 1 90 95 Z" fill="#27AE60"/><circle cx="35" cy="70" r="5" fill="#F1C40F"/><circle cx="65" cy="70" r="5" fill="#F1C40F"/><circle cx="35" cy="70" r="2" fill="#2C3A40"/><circle cx="65" cy="70" r="2" fill="#2C3A40"/><rect x="42" y="85" width="4" height="4" fill="#2C3A40"/><rect x="54" y="85" width="4" height="4" fill="#2C3A40"/></svg>`;
 
 const avatares = [
-  { icon: svgOso, name: 'Oso Polar', req: 0, desc: 'Disponible desde el inicio.' },
-  { icon: svgZorro, name: 'Zorro Ártico', req: 3, desc: 'Requiere 3 días estables.' },
-  { icon: svgPinguino, name: 'Pingüino Emperador', req: 7, desc: 'Requiere 1 semana estable.' },
-  { icon: svgFoca, name: 'Foca Valiente', req: 10, desc: 'Requiere 10 días de excelencia.' },
-  { icon: svgBuho, name: 'Búho Nival', req: 14, desc: 'Requiere 2 semanas estables.' },
-  { icon: svgLobo, name: 'Lobo Alfa', req: 18, desc: 'Requiere 18 días estables.' },
-  { icon: svgTigre, name: 'Tigre Blanco', req: 21, desc: 'Requiere 3 semanas estables.' },
-  { icon: svgPanda, name: 'Panda Zen', req: 25, desc: 'Requiere 25 días estables.' },
-  { icon: svgUnicornio, name: 'Unicornio Místico', req: 28, desc: 'Requiere 4 semanas estables.' },
-  { icon: svgDragon, name: 'Dragón Legendario', req: 35, desc: 'Requiere 35 días absolutos.' }
+  { icon: svgOso, name: 'Oso Polar' },
+  { icon: svgZorro, name: 'Zorro Ártico' },
+  { icon: svgPinguino, name: 'Pingüino Emperador' },
+  { icon: svgFoca, name: 'Foca Valiente' },
+  { icon: svgBuho, name: 'Búho Nival' },
+  { icon: svgLobo, name: 'Lobo Alfa' },
+  { icon: svgTigre, name: 'Tigre Blanco' },
+  { icon: svgPanda, name: 'Panda Zen' },
+  { icon: svgUnicornio, name: 'Unicornio Místico' },
+  { icon: svgDragon, name: 'Dragón Legendario' }
 ];
+const UMBRALES_REGISTROS = [5, 15, 30, 60, 100, 150, 200, 300];
+const RACHA_FINAL = 7;
 
 const avataresBgColors = ['#197B79', '#E55938', '#73A5D4', '#7BA68D', '#2B3C46', '#1A7A78', '#EFBA34', '#799E7A', '#FA65ED', '#213B41'];
 
-function contarDiasEstables() {
-  const historial = leerHistorial(); 
-  const glucosasPorDia = {};
-  
-  historial.forEach(reg => { 
-      if (reg.iso && reg.glucosa) { 
-          if (!glucosasPorDia[reg.iso]) glucosasPorDia[reg.iso] = []; 
-          glucosasPorDia[reg.iso].push(parseFloat(reg.glucosa)); 
-      } 
+function rangoMetaUsuario() {
+  const antes = numeroONull(config.metas && config.metas.antes);
+  const correccion = numeroONull(config.metas && config.metas.correccion);
+  if (antes === null && correccion === null) return null;
+  const lo = Math.min(antes === null ? correccion : antes, correccion === null ? antes : correccion);
+  const hi = Math.max(antes === null ? correccion : antes, correccion === null ? antes : correccion);
+  return { lo: lo, hi: hi };
+}
+function glucosaEnMeta(valor) {
+  const g = parseFloat(valor);
+  const rango = rangoMetaUsuario();
+  if (!rango || !isFinite(g)) return false;
+  return g >= rango.lo && g <= rango.hi;
+}
+function diasEntreISO(a, b) {
+  const da = new Date(a + 'T00:00:00');
+  const db = new Date(b + 'T00:00:00');
+  return Math.round((db.getTime() - da.getTime()) / 86400000);
+}
+function metaDeAvatar(index) {
+  if (index <= 0) return { tipo: 'libre', n: 0 };
+  if (index === avatares.length - 1) return { tipo: 'racha', n: RACHA_FINAL };
+  const slot = index - 1;
+  const base = UMBRALES_REGISTROS[slot];
+  const n = base != null ? base : UMBRALES_REGISTROS[UMBRALES_REGISTROS.length - 1] + (slot - UMBRALES_REGISTROS.length + 1) * 50;
+  return { tipo: 'registros', n: n };
+}
+function progresoAvatares() {
+  const historial = leerHistorial();
+  let enMeta = 0;
+  const porDia = {};
+  historial.forEach((reg) => {
+    const g = parseFloat(reg.glucosa);
+    if (!isFinite(g)) return;
+    if (glucosaEnMeta(g)) enMeta += 1;
+    if (!reg.iso) return;
+    if (!porDia[reg.iso]) porDia[reg.iso] = [];
+    porDia[reg.iso].push(g);
   });
-  
-  let estables = 0;
-  for (let fecha in glucosasPorDia) {
-    let lecturas = glucosasPorDia[fecha].filter(g => !isNaN(g)); 
-    if (lecturas.length === 0) continue;
-    
-    let crisis = lecturas.find(g => g < 65 || g > 250);
-    if (!crisis) { 
-        estables++; 
-    }
+  const diasOk = Object.keys(porDia).filter((dia) => {
+    const vals = porDia[dia];
+    const promedio = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return glucosaEnMeta(promedio);
+  }).sort();
+  let mejor = 0;
+  let seguida = 0;
+  let previo = null;
+  diasOk.forEach((dia) => {
+    if (previo && diasEntreISO(previo, dia) === 1) seguida += 1;
+    else seguida = 1;
+    previo = dia;
+    if (seguida > mejor) mejor = seguida;
+  });
+  const desbloqueados = [];
+  avatares.forEach((av, index) => {
+    const meta = metaDeAvatar(index);
+    if (meta.tipo === 'libre') desbloqueados.push(index);
+    else if (meta.tipo === 'registros' && enMeta >= meta.n) desbloqueados.push(index);
+    else if (meta.tipo === 'racha' && mejor >= meta.n) desbloqueados.push(index);
+  });
+  return { enMeta: enMeta, racha: mejor, desbloqueados: desbloqueados };
+}
+function revisarAvatares(avisar) {
+  const prog = progresoAvatares();
+  const clave = claveUsuario('polar_avatares_vistos');
+  let previos = null;
+  if (clave && localStorage.getItem(clave) !== null) {
+    try { previos = JSON.parse(localStorage.getItem(clave)); } catch (e) { previos = []; }
   }
-  return estables;
+  if (clave) localStorage.setItem(clave, JSON.stringify(prog.desbloqueados));
+  if (avisar && Array.isArray(previos)) {
+    const nuevos = prog.desbloqueados.filter((i) => i > 0 && previos.indexOf(i) === -1);
+    if (nuevos.length) celebrarAvatares(nuevos);
+  }
+  if (prog.desbloqueados.indexOf(config.avatar) === -1) {
+    config.avatar = 0;
+    guardarConfigLocal();
+    if (typeof cargarAvatar === 'function') cargarAvatar();
+  }
+  return prog;
+}
+let toastAvatarTimer;
+function celebrarAvatares(indices) {
+  const nombres = indices.map((i) => avatares[i] ? avatares[i].name : '').filter(Boolean);
+  if (!nombres.length) return;
+  const texto = nombres.length === 1
+    ? '¡Nuevo compañero! Ya puedes usar ' + nombres[0] + '.'
+    : '¡Qué bien! Desbloqueaste ' + nombres.join(', ') + '.';
+  const el = document.getElementById('toast-avatar');
+  if (!el) return;
+  el.textContent = texto;
+  el.classList.add('show');
+  clearTimeout(toastAvatarTimer);
+  toastAvatarTimer = setTimeout(() => el.classList.remove('show'), 4200);
+}
+function textoProgresoAvatar(index, prog) {
+  const meta = metaDeAvatar(index);
+  if (meta.tipo === 'libre') return 'Contigo desde el inicio.';
+  if (meta.tipo === 'racha') return Math.min(prog.racha, meta.n) + '/' + meta.n + ' días en meta';
+  return Math.min(prog.enMeta, meta.n) + '/' + meta.n + ' en meta';
+}
+function textoCandadoAvatar(index) {
+  const meta = metaDeAvatar(index);
+  if (meta.tipo === 'racha') return 'Se desbloquea con ' + meta.n + ' días seguidos en meta';
+  return 'Se desbloquea con ' + meta.n + ' registros en meta';
 }
 
 function renderAvatarPanel() {
-  const diasEstables = contarDiasEstables(); 
+  const prog = progresoAvatares();
   const gridContainer = document.getElementById('avatars-grid-container');
-  
+  const resumen = document.getElementById('avatar-resumen');
+  if (resumen) {
+    resumen.textContent = prog.enMeta === 0
+      ? 'Tus registros en meta irán sumando compañeros.'
+      : 'Llevas ' + prog.enMeta + ' registros en meta. Cada uno cuenta.';
+  }
+  if (!gridContainer) return;
+
+  const candado = '<span class="avatar-lock" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="5" y="11" width="14" height="9" rx="2" fill="#2C3A40"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#2C3A40" stroke-width="2"/></svg></span>';
   let gridHTML = '';
   avatares.forEach((av, index) => {
-    const desbloqueado = diasEstables >= av.req;
-    const isActive = (config.avatar === index);
-    const statusClass = desbloqueado ? '' : 'locked';
-    const activeClass = isActive ? 'active' : '';
+    const desbloqueado = prog.desbloqueados.indexOf(index) !== -1;
+    const isActive = config.avatar === index;
     const bg = avataresBgColors[index] || '#2C3A40';
-    const diasTexto = index === 0 ? 'Nivel Base' : `${av.req} Días`;
     const nombreCorto = av.name.replace(' Emperador', '').replace(' Legendario', ' Leyenda');
-
+    const detalle = desbloqueado ? textoProgresoAvatar(index, prog) : textoCandadoAvatar(index);
+    const avance = desbloqueado ? '' : '<p class="avatar-avance">' + textoProgresoAvatar(index, prog) + '</p>';
     gridHTML += `
-      <div class="avatar-card ${statusClass} ${activeClass}" onclick="${desbloqueado ? `seleccionarAvatarDirecto(${index})` : 'null'}">
+      <div class="avatar-card ${desbloqueado ? '' : 'locked'} ${isActive ? 'active' : ''}" ${desbloqueado ? 'onclick="seleccionarAvatarDirecto(' + index + ')"' : ''}>
         <div class="avatar-bg" style="background-color: ${bg};">
-          <span style="display: block; width: 100%; height: 100%;">${av.icon}</span>
+          <span class="avatar-dibujo">${av.icon}</span>
+          ${desbloqueado ? '' : candado}
         </div>
         <h4>${nombreCorto}</h4>
-        <p>${diasTexto}</p>
+        <p class="avatar-hint">${detalle}</p>
+        ${avance}
       </div>
     `;
   });
   gridContainer.innerHTML = gridHTML;
 }
 
-function seleccionarAvatarDirecto(index) { 
-  config.avatar = index; 
-  guardarConfigLocal(); 
-  cargarAvatar(); 
-  renderAvatarPanel(); 
-  alert("¡Poder equipado con excelencia!"); 
+function seleccionarAvatarDirecto(index) {
+  const prog = progresoAvatares();
+  if (prog.desbloqueados.indexOf(index) === -1) return;
+  config.avatar = index;
+  guardarConfigLocal();
+  cargarAvatar();
+  renderAvatarPanel();
+  celebrarAvatares([]);
+  const el = document.getElementById('toast-avatar');
+  if (el) {
+    el.textContent = avatares[index].name + ' te acompaña ahora.';
+    el.classList.add('show');
+    clearTimeout(toastAvatarTimer);
+    toastAvatarTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
 }
 
 function cargarAvatar() { 
@@ -1300,6 +1403,7 @@ function pintarTodo() {
   cargarNombreUsuario();
   actualizarRadar();
   actualizarAvisoCalculo();
+  if (typeof revisarAvatares === 'function') revisarAvatares(false);
 }
 function adoptarConfigDeUsuario(user) {
   const meta = (user && user.user_metadata) || {};
@@ -1892,6 +1996,7 @@ function guardarDosisAplicada(e, dosis, glucosa, carbos, tipoComida, carbosBase,
   if (carbosBase !== null && carbosBase !== undefined) { regLocal.grasas = true; regLocal.carbosBase = carbosBase; regLocal.pctGrasas = pctGrasas; }
   historial.push(regLocal); 
   guardarHistorial(historial);
+  if (typeof revisarAvatares === 'function') revisarAvatares(true);
 
   const encolar = () => {
       let colaSync = leerCola();

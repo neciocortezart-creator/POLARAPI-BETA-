@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=19">
 
   <style>
     /* Área táctil amplia y respuesta instantánea al toque en iPhone */
@@ -143,6 +143,7 @@
 
   <div id="panel-overlay" class="overlay" onclick="cerrarOverlays()"></div>
   <div id="toast-undo"><span>Elemento borrado</span><button class="btn-undo" onclick="deshacerBorrado()">Deshacer</button></div>
+  <div id="toast-avatar" role="status"></div>
 
   <div id="panel-menu" class="side-panel left-panel">
     <div class="panel-header-row">
@@ -181,7 +182,7 @@
       <div class="logo-container">
         <button class="hamburger-btn" aria-label="Abrir menú" onclick="event.stopPropagation(); toggleMenuPanel()">☰</button>
         <h1>Polar</h1>
-        <div id="polar-bear" class="sleeping">
+        <div id="polar-bear" class="sleeping" onclick="switchTab('avatars')" role="button" aria-label="Elegir compañero">
           <span class="bear-icon" id="main-bear-icon" style="display: block; width: 100%; height: 100%;">
             <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="40" r="16" fill="#FFFFFF"/><circle cx="72" cy="40" r="16" fill="#FFFFFF"/><path d="M 10 95 A 40 40 0 0 1 90 95 Z" fill="#FFFFFF"/><circle cx="38" cy="70" r="4.5" fill="#2C3A40"/><circle cx="62" cy="70" r="4.5" fill="#2C3A40"/><ellipse cx="50" cy="82" rx="7" ry="4" fill="#2C3A40"/></svg>
           </span>
@@ -502,11 +503,12 @@
     <div id="view-avatars" style="display: none;">
       <div class="card card-avatars card-full" id="panel-avatars" style="display: block;">
         <h3 class="panel-header-small">
-          <span>Bestias de Poder</span>
+          <span>Compañeros</span>
           <div class="title-flex">
             <button class="btn-close-panel" onclick="switchTab('home')">×</button>
           </div>
         </h3>
+        <p id="avatar-resumen" class="avatar-resumen"></p>
         <div id="avatars-grid-container" class="avatars-grid"></div>
       </div>
     </div>
@@ -549,7 +551,7 @@
 </div>
 
 <!-- LÓGICA DE LA APP -->
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 
 <!-- CIERRE INMEDIATO Y DESENFOQUE PROFESIONAL -->
 <script>

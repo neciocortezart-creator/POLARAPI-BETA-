@@ -1,5 +1,5 @@
-const CACHE_NAME = 'polar-elite-cache-v18';
-// v18 sustituye a las cachés anteriores.
+const CACHE_NAME = 'polar-elite-cache-v19';
+// v19 sustituye a las cachés anteriores.
 // Al activarse se borran las demás para que la PWA de iOS/Safari cargue esta versión.
 const ASSETS_TO_CACHE = [
   './',
@@ -10,9 +10,9 @@ const ASSETS_TO_CACHE = [
   './icon-512.png',
   './icon-maskable-512.png',
   './styles.css',
-  './styles.css?v=18',
+  './styles.css?v=19',
   './app.js',
-  './app.js?v=18',
+  './app.js?v=19',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
   'https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap'
@@ -34,7 +34,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. ACTIVACIÓN: borra cualquier caché que no sea v18 y recarga las ventanas
+// 2. ACTIVACIÓN: borra cualquier caché que no sea v19 y recarga las ventanas
 //    que seguían mostrando una versión anterior.
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
