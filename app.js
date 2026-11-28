@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Deivis Cortez (Necio).
+ * Polar. Todos los derechos reservados. / All rights reserved.
+ * Queda prohibida la copia, modificación, distribución o reutilización
+ * del código, el diseño, el nombre «Polar» o los recursos sin autorización escrita.
+ * Ver LICENSE.
+ */
 const POLAR_AUTH_REDIRECT = 'https://neciocortezart-creator.github.io/POLARAPI-BETA-/';
 const AVISO_MEDICO = 'Polar es una herramienta de apoyo. No reemplaza las indicaciones de tu médico.';
 // mam sigue siendo Once. mpm se muestra como Colación. Las claves no se reescriben.
@@ -164,6 +171,8 @@ function switchTab(tabId) {
   document.getElementById('view-config').style.display = 'none';
   document.getElementById('view-avatars').style.display = 'none';
   document.getElementById('view-usuario').style.display = 'none';
+  const vistaGuia = document.getElementById('view-guia');
+  if (vistaGuia) vistaGuia.style.display = 'none';
 
   const radar = document.getElementById('radar-precision');
   if (radar) radar.style.display = 'none';
@@ -215,6 +224,11 @@ function switchTab(tabId) {
   else if (tabId === 'usuario') {
     document.getElementById('view-usuario').style.display = 'block';
   }
+  else if (tabId === 'guia') {
+    if (vistaGuia) vistaGuia.style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+  if (typeof actualizarTipGuia === 'function') actualizarTipGuia(tabId);
 }
 
 function actualizarRadar() {
@@ -1815,6 +1829,27 @@ async function guardarConfig() {
   switchTab(config.setupCompleto ? 'home' : 'setup');
   alert('Configuración guardada.');
 }
+function guiaOfrecida() {
+  return leerTextoUsuario('polar_guia_ofrecida', '') === '1';
+}
+function guiaTipCerrada() {
+  return leerTextoUsuario('polar_guia_tip', '') === '1';
+}
+function actualizarTipGuia(tabId) {
+  const tip = document.getElementById('tip-primeros-pasos');
+  if (!tip) return;
+  tip.hidden = !(tabId === 'home' && guiaOfrecida() && !guiaTipCerrada());
+}
+function cerrarTipGuia() {
+  guardarTextoUsuario('polar_guia_tip', '1');
+  const tip = document.getElementById('tip-primeros-pasos');
+  if (tip) tip.hidden = true;
+}
+function abrirGuiaDesdeTip() {
+  cerrarTipGuia();
+  switchTab('guia');
+}
+
 async function guardarPrimeraConfig() {
   const err = document.getElementById('setup-error');
   const mostrar = (m) => { if (err) { err.style.display = 'block'; err.textContent = m; } };
@@ -1855,6 +1890,7 @@ async function guardarPrimeraConfig() {
   config.setupCompleto = configTieneEsquema(config);
   guardarConfigLocal();
   pintarTodo();
+  guardarTextoUsuario('polar_guia_ofrecida', '1');
   const ok = await sincronizarConfigNube();
   switchTab('home');
   if (!ok) {

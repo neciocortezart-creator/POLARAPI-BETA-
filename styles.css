@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Deivis Cortez (Necio).
+ * Polar. Todos los derechos reservados. / All rights reserved.
+ * Queda prohibida la copia, modificación, distribución o reutilización
+ * del código, el diseño, el nombre «Polar» o los recursos sin autorización escrita.
+ * Ver LICENSE.
+ */
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap');
 
 :root {
@@ -41,7 +48,10 @@ body { background-color: var(--bg-polar); color: var(--text-primary); padding: 2
 .splash-oculto { opacity: 0; visibility: hidden; }
 
 #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-polar); display: flex; flex-direction: column; justify-content: flex-start; align-items: center; z-index: 99998; overflow-y: auto; padding: calc(28px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); transition: opacity 0.4s ease, visibility 0.4s ease; }
-.login-box { background: var(--white); width: 100%; max-width: 380px; margin: auto; padding: 22px 18px 16px; border-radius: var(--radius); box-shadow: 0 20px 50px rgba(8,131,135,0.08); text-align: center; border: 1px solid rgba(8,131,135,0.1); }
+.login-equilibrio { flex: 1 1 0; min-height: 0; width: 100%; }
+.login-box { background: var(--white); width: 100%; max-width: 380px; margin: 0 auto; padding: 22px 18px 16px; border-radius: var(--radius); box-shadow: 0 20px 50px rgba(8,131,135,0.08); text-align: center; border: 1px solid rgba(8,131,135,0.1); flex: 0 0 auto; }
+.aviso-derechos { margin: 16px auto 4px; max-width: 360px; padding: 0 12px; font-size: 11px; font-weight: 700; line-height: 1.35; text-align: center; color: var(--text-primary); opacity: 0.62; }
+#login-screen .aviso-derechos { flex: 0 0 auto; align-self: stretch; width: auto; max-width: none; margin: 0; padding: 10px 12px 2px; }
 .login-box h2 { color: var(--turquoise-strong); font-size: 28px; font-weight: 900; margin-bottom: 4px; text-shadow: 0 1px 2px rgba(0,0,0,0.03); }
 .login-box p { color: var(--text-primary); font-size: 14px; font-weight: 700; margin-bottom: 12px; opacity: 0.8; }
 .login-box label { font-size: 14px; font-weight: 800; color: var(--text-primary); display: block; text-align: left; margin-bottom: 4px; }
@@ -509,6 +519,27 @@ button:disabled { opacity: .45; }
   padding: 8px 6px !important;
   text-overflow: clip;
 }
+.tip-primeros { margin: 0 0 12px; padding: 12px 14px; border-radius: 16px; background: var(--card-bg); color: var(--card-text); border: 1px solid var(--input-border); }
+.tip-primeros[hidden] { display: none !important; }
+.tip-primeros p { margin: 0 0 8px; font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--card-text); }
+.tip-primeros-acciones { display: flex; align-items: center; gap: 8px; }
+.tip-abrir { border: none; border-radius: 12px; min-height: 44px; padding: 8px 14px; background: var(--turquoise-strong); color: var(--btn-text); font-weight: 900; font-size: 14px; cursor: pointer; }
+.tip-primeros .btn-link { min-height: 44px; padding: 8px 4px; }
+.guia-config-link { display: inline-flex; align-items: center; min-height: 44px; margin: -6px 0 8px; padding: 0; font-size: 13px; }
+.guia-aviso { font-size: 13px; font-weight: 800; line-height: 1.4; color: var(--card-text); background: rgba(8,131,135,0.12); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; }
+.guia-pasos { list-style: none; display: flex; flex-direction: column; gap: 14px; margin: 0 0 18px; padding: 0; }
+.guia-paso { display: flex; gap: 10px; align-items: flex-start; }
+.guia-icono { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; background: var(--turquoise-strong); color: var(--btn-text); display: flex; align-items: center; justify-content: center; }
+.guia-icono svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.guia-paso h4 { margin: 0 0 4px; font-size: 15px; font-weight: 900; color: var(--card-text); }
+.guia-paso p { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.4; color: var(--card-text); }
+.guia-faq-titulo { margin: 4px 0 10px; font-size: 16px; font-weight: 900; color: var(--card-text); }
+.guia-faq details { border: 1px solid var(--input-border); border-radius: 12px; background: var(--bg-polar); color: var(--text-primary); margin: 0 0 8px; }
+.guia-faq summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 10px 12px; font-size: 14px; font-weight: 900; cursor: pointer; color: var(--text-primary); }
+.guia-faq summary::-webkit-details-marker { display: none; }
+.guia-faq summary::after { content: '+'; flex: 0 0 auto; color: var(--turquoise-strong); font-weight: 900; }
+.guia-faq details[open] summary::after { content: '–'; }
+.guia-faq details p { margin: 0; padding: 0 12px 12px; font-size: 13px; font-weight: 700; line-height: 1.4; color: var(--text-primary); }
 .filtro-fecha { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; }
 .filtro-fecha label { margin: 0; font-size: 14px; font-weight: 800; white-space: nowrap; }
 .filtro-fecha input { flex: 1; margin: 0; }
