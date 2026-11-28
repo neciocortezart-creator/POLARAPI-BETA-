@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=19">
 
   <style>
     /* Área táctil amplia y respuesta instantánea al toque en iPhone */
@@ -78,21 +78,64 @@
 
 <div id="login-screen">
   <div class="login-box">
-    <div style="width: 75px; height: 75px; background: var(--turquoise-strong); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 12px 30px rgba(8,131,135,0.35);">
+    <div style="width: 64px; height: 64px; background: var(--turquoise-strong); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; box-shadow: 0 12px 30px rgba(8,131,135,0.35);">
       <svg viewBox="0 0 100 100" width="80%" height="80%" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="40" r="16" fill="#FFFFFF"/><circle cx="72" cy="40" r="16" fill="#FFFFFF"/><path d="M 10 95 A 40 40 0 0 1 90 95 Z" fill="#FFFFFF"/><circle cx="38" cy="70" r="4.5" fill="#2C3A40"/><circle cx="62" cy="70" r="4.5" fill="#2C3A40"/><ellipse cx="50" cy="82" rx="7" ry="4" fill="#2C3A40"/></svg>
     </div>
     <h2>Polar</h2>
-    <p>Acceso Seguro Familiar</p>
-    
-    <label>Correo Electrónico</label>
-    <input type="email" id="login-user" placeholder="Ej: papa@polar.com" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email">
-    
-    <label>Código de Seguridad</label>
-    <input type="password" id="login-pass" placeholder="Ingresa tu código" autocomplete="current-password" autocapitalize="none" autocorrect="off">
-    <button type="button" id="btn-ver-codigo" onclick="toggleVerCodigo()" style="display:block; margin:-10px 0 14px auto; background:none; border:none; color:var(--turquoise-strong); font-weight:800; font-size:13px; cursor:pointer;">Mostrar</button>
-    <div id="login-error" role="alert" style="display:none; margin-bottom:14px; padding:10px 12px; border-radius:12px; background:rgba(255,59,48,0.1); color:#C62828; font-size:13px; font-weight:800; text-align:left;"></div>
-    
-    <button class="btn-main" onclick="validarAcceso()">Acceder</button>
+    <p id="login-subtitulo">Calculadora de carbohidratos e insulina</p>
+    <p class="aviso-medico">Polar es una herramienta de apoyo. No reemplaza las indicaciones de tu médico.</p>
+    <a class="link-donar" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoya Polar</a>
+    <div id="login-ok" role="status"></div>
+    <div id="login-error" role="alert"></div>
+
+    <div id="auth-entrar">
+      <label for="login-user">Correo electrónico</label>
+      <input type="email" id="login-user" placeholder="tu@correo.com" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email">
+      <label for="login-pass">Contraseña</label>
+      <input type="password" id="login-pass" placeholder="Tu contraseña" autocomplete="current-password" autocapitalize="none" autocorrect="off">
+      <button type="button" id="btn-ver-codigo" class="btn-ver" onclick="toggleVerCodigo()">Mostrar</button>
+      <button type="button" id="btn-acceder" class="btn-main" onclick="validarAcceso()">Acceder</button>
+      <div class="login-links">
+        <button type="button" class="btn-link" onclick="mostrarAuth('crear')">Crear cuenta</button>
+        <button type="button" class="btn-link" onclick="mostrarAuth('olvide')">Olvidé mi contraseña</button>
+      </div>
+    </div>
+
+    <div id="auth-crear" style="display:none">
+      <h3 class="auth-titulo">Crear cuenta</h3>
+      <label for="signup-email">Correo electrónico</label>
+      <input type="email" id="signup-email" placeholder="tu@correo.com" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email">
+      <label for="signup-pass">Contraseña</label>
+      <input type="password" id="signup-pass" placeholder="Mínimo 8 caracteres" autocomplete="new-password" autocapitalize="none" autocorrect="off">
+      <label for="signup-pass2">Repetir contraseña</label>
+      <input type="password" id="signup-pass2" placeholder="Repite la contraseña" autocomplete="new-password" autocapitalize="none" autocorrect="off">
+      <button type="button" id="btn-crear-cuenta" class="btn-main" onclick="crearCuenta()">Crear cuenta</button>
+      <div class="login-links">
+        <button type="button" class="btn-link" onclick="mostrarAuth('entrar')">Ya tengo cuenta</button>
+      </div>
+    </div>
+
+    <div id="auth-olvide" style="display:none">
+      <h3 class="auth-titulo">Olvidé mi contraseña</h3>
+      <label for="reset-email">Correo electrónico</label>
+      <input type="email" id="reset-email" placeholder="tu@correo.com" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email">
+      <button type="button" id="btn-enviar-reset" class="btn-main" onclick="enviarRecuperacion()">Enviar enlace</button>
+      <div class="login-links">
+        <button type="button" class="btn-link" onclick="mostrarAuth('entrar')">Volver a entrar</button>
+      </div>
+    </div>
+
+    <div id="auth-nueva" style="display:none">
+      <h3 class="auth-titulo">Nueva contraseña</h3>
+      <label for="new-pass">Nueva contraseña</label>
+      <input type="password" id="new-pass" placeholder="Mínimo 8 caracteres" autocomplete="new-password" autocapitalize="none" autocorrect="off">
+      <label for="new-pass2">Repetir contraseña</label>
+      <input type="password" id="new-pass2" placeholder="Repite la contraseña" autocomplete="new-password" autocapitalize="none" autocorrect="off">
+      <button type="button" id="btn-guardar-pass" class="btn-main" onclick="guardarNuevaContrasena()">Guardar contraseña</button>
+      <div class="login-links">
+        <button type="button" class="btn-link" onclick="cerrarSesion()">Volver a entrar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -100,6 +143,7 @@
 
   <div id="panel-overlay" class="overlay" onclick="cerrarOverlays()"></div>
   <div id="toast-undo"><span>Elemento borrado</span><button class="btn-undo" onclick="deshacerBorrado()">Deshacer</button></div>
+  <div id="toast-avatar" role="status"></div>
 
   <div id="panel-menu" class="side-panel left-panel">
     <div class="panel-header-row">
@@ -112,6 +156,8 @@
       <button class="btn-small" style="flex: 1; padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 800; background: var(--text-primary); color: white; border: none; cursor: pointer;" onclick="cerrarSesion()">Cerrar sesión</button>
     </div>
 
+    <a class="btn-menu-lateral" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoya Polar ☕</a>
+
     <button class="btn-menu-lateral" onclick="switchTab('citas');">
       <div class="icon-24">
         <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#2C3A40" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -122,10 +168,10 @@
     <div class="rules-menu">
       <h3>Recordatorios Importantes</h3>
       <ul>
-        <li><strong>Toujeo / Basal:</strong> <span id="txt-toujeo" style="color: var(--turquoise-strong); font-weight: 900; font-size: 15px;">56</span> U config.</li>
+        <li><strong>Toujeo / Basal:</strong> <span id="txt-toujeo" style="color: var(--turquoise-strong); font-weight: 900; font-size: 15px;">—</span> U config.</li>
         <li><strong style="color:#FF3B30;">Crítica (&lt;= 54):</strong> NO inyectar.</li>
         <li><strong>Alta (&gt;= 250):</strong> Revisa posibles picos altos seguidos.</li>
-        <li><strong style="color:#FF3B30;">Extrema (&gt;= 400):</strong> Llamar a emergencias / Papá.</li>
+        <li id="aviso-extrema"><strong style="color:#FF3B30;">Extrema (&gt;= 400):</strong> <span id="txt-aviso-emergencia">Llamar a emergencias.</span></li>
       </ul>
     </div>
   </div>
@@ -136,7 +182,7 @@
       <div class="logo-container">
         <button class="hamburger-btn" aria-label="Abrir menú" onclick="event.stopPropagation(); toggleMenuPanel()">☰</button>
         <h1>Polar</h1>
-        <div id="polar-bear" class="sleeping">
+        <div id="polar-bear" class="sleeping" onclick="switchTab('avatars')" role="button" aria-label="Elegir compañero">
           <span class="bear-icon" id="main-bear-icon" style="display: block; width: 100%; height: 100%;">
             <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="40" r="16" fill="#FFFFFF"/><circle cx="72" cy="40" r="16" fill="#FFFFFF"/><path d="M 10 95 A 40 40 0 0 1 90 95 Z" fill="#FFFFFF"/><circle cx="38" cy="70" r="4.5" fill="#2C3A40"/><circle cx="62" cy="70" r="4.5" fill="#2C3A40"/><ellipse cx="50" cy="82" rx="7" ry="4" fill="#2C3A40"/></svg>
           </span>
@@ -145,11 +191,12 @@
       </div>
       <div class="top-actions">
         <button id="btn-install" class="icon-btn" style="display: none;" onclick="instalarApp()">Instalar</button>
+        <button id="btn-usuario-nombre" class="icon-btn" onclick="switchTab('usuario')">Perfil</button>
       </div>
     </div>
 
     <!-- CALCULADORA PRINCIPAL CON FORMULARIO -->
-    <form class="grid" id="main-calculator" onsubmit="event.preventDefault(); document.activeElement && document.activeElement.blur(); calcular(false); return false;">
+    <form class="grid" id="main-calculator" onsubmit="event.preventDefault(); window.__polarCalculoBoton = true; if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); calcular(false); window.__polarCalculoBoton = false; return false;">
       <div class="card card-meal card-full">
         <label for="comida" style="color: var(--turquoise-strong); font-weight: 900; font-size: 20px;">Agregar comida</label>
         <select id="comida" onchange="actualizarTextosComida(); this.dataset.manual = 'true'; calcular(false);">
@@ -194,31 +241,79 @@
           <label class="grasas-toggle" for="grasas-toggle">
             <input type="checkbox" id="grasas-toggle" onchange="actualizarDesgloseCarbos(); if(document.getElementById('resultado').style.display==='block') calcular(false);">
             <span class="grasas-switch" aria-hidden="true"></span>
-            <span class="grasas-texto">Comida con grasas<small>cerdo, mayonesa, frituras… <b id="grasas-pct-label">+30%</b></small></span>
+            <span class="grasas-texto">Comida con grasas<small>cerdo, mayonesa, frituras… <b id="grasas-pct-label">+0%</b></small></span>
           </label>
           <div id="carbos-desglose" class="carbos-desglose" aria-live="polite"></div>
       </div>
 
       <!-- BOTÓN DIRECTO DE CÁLCULO -->
+      <div id="aviso-config-faltante" class="aviso-config card-full" style="display:none"></div>
       <button type="submit" class="btn-main card-full" style="margin-top: 0;">Calcular Dosis</button>
     </form>
 
     <!-- VENTANA MODAL DE RESULTADO: FUERA DEL FORMULARIO -->
     <div id="resultado" class="result-box"></div>
 
-    <!-- RADAR: ÚLTIMOS REGISTROS -->
-    <div id="radar-precision" style="display: none; margin-bottom: 20px; padding: 16px; background: var(--white); border-radius: var(--radius); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03);">
-      <h3 class="panel-header-small" style="margin-bottom: 12px; font-size: 16px;">
-        <div class="title-flex">
-          <div class="icon-24">
-            <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-          </div>
-          Últimos Registros
+    <aside class="donar-card donar-card-inicio">
+      <svg class="donar-oso" viewBox="0 0 120 96" aria-hidden="true">
+        <rect x="2" y="2" width="116" height="92" rx="18" fill="#088387"/>
+        <rect x="34" y="44" width="46" height="22" rx="3" fill="#2C3A40"/>
+        <rect x="37" y="47" width="40" height="14" rx="2" fill="#FAF8F5"/>
+        <rect x="41" y="51" width="16" height="2" rx="1" fill="#088387"/>
+        <rect x="41" y="55" width="26" height="2" rx="1" fill="#C9D6D6"/>
+        <path d="M30 66 h54 l6 8 H24 z" fill="#2C3A40"/>
+        <circle cx="48" cy="30" r="8" fill="#FFFFFF"/>
+        <circle cx="74" cy="30" r="8" fill="#FFFFFF"/>
+        <circle cx="61" cy="40" r="18" fill="#FFFFFF"/>
+        <circle cx="55" cy="38" r="2.2" fill="#2C3A40"/>
+        <circle cx="67" cy="38" r="2.2" fill="#2C3A40"/>
+        <ellipse cx="61" cy="44" rx="3.4" ry="2.2" fill="#2C3A40"/>
+        <ellipse cx="49" cy="60" rx="6" ry="3.2" fill="#FFFFFF"/>
+        <ellipse cx="73" cy="60" rx="6" ry="3.2" fill="#FFFFFF"/>
+        <rect x="92" y="52" width="14" height="16" rx="3" fill="#FFFFFF"/>
+        <path d="M106 56 h3.5 a4 4 0 0 1 0 8 H106" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+        <rect x="94.5" y="55" width="9" height="7" rx="1.5" fill="#F3C623"/>
+        <path d="M97 48 q2-4 0-7" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M102 48 q2-4 0-7" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <div class="donar-cuerpo">
+        <p>Polar es gratis. Si te ayuda, puedes invitarnos un café para seguir mejorándola y mantenerla funcionando.</p>
+        <a class="btn-donar" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoyar Polar ☕</a>
+      </div>
+    </aside>
+
+    <div id="view-setup" style="display: none;">
+      <div class="card card-settings card-full" id="panel-setup" style="display: block;">
+        <h3 class="panel-header-small">Primera configuración</h3>
+        <p class="setup-ayuda">Completa tus datos para poder calcular. Toujeo y el contacto son opcionales.</p>
+        <h3>Ratios (gramos que cubre 1 U)</h3>
+        <div class="setup-grid">
+          <div><label for="setup-r-desayuno">Desayuno</label><input type="number" id="setup-r-desayuno" inputmode="decimal" step="any" min="0" placeholder="Ej: 10"></div>
+          <div><label for="setup-r-colacion">Colación</label><input type="number" id="setup-r-colacion" inputmode="decimal" step="any" min="0" placeholder="Ej: 12"></div>
+          <div><label for="setup-r-almuerzo">Almuerzo</label><input type="number" id="setup-r-almuerzo" inputmode="decimal" step="any" min="0" placeholder="Ej: 10"></div>
+          <div><label for="setup-r-once">Once</label><input type="number" id="setup-r-once" inputmode="decimal" step="any" min="0" placeholder="Ej: 15"></div>
+          <div><label for="setup-r-cena">Cena</label><input type="number" id="setup-r-cena" inputmode="decimal" step="any" min="0" placeholder="Ej: 12"></div>
         </div>
-      </h3>
-      <div id="lista-radar" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        <label for="setup-fc">Factor de sensibilidad</label>
+        <input type="number" id="setup-fc" inputmode="decimal" step="any" min="1" placeholder="1 U baja cuántos mg/dL">
+        <h3>Metas (mg/dL)</h3>
+        <div class="setup-grid">
+          <div><label for="setup-meta-antes">Antes de comer</label><input type="number" id="setup-meta-antes" inputmode="numeric" min="1" placeholder="Ej: 100"></div>
+          <div><label for="setup-meta-cor">Corrección</label><input type="number" id="setup-meta-cor" inputmode="numeric" min="1" placeholder="Ej: 150"></div>
+        </div>
+        <label for="setup-toujeo">Toujeo / basal (opcional)</label>
+        <input type="number" id="setup-toujeo" inputmode="decimal" step="any" min="0" placeholder="Unidades, si usas">
+        <h3>Contacto de emergencia (opcional)</h3>
+        <div class="setup-grid">
+          <div><label for="setup-contacto-nombre">Nombre</label><input type="text" id="setup-contacto-nombre" placeholder="Nombre" autocomplete="name"></div>
+          <div><label for="setup-contacto-tel">Teléfono</label><input type="tel" id="setup-contacto-tel" placeholder="Teléfono" autocomplete="tel"></div>
+        </div>
+        <p class="aviso-medico">Polar es una herramienta de apoyo. No reemplaza las indicaciones de tu médico.</p>
+        <label class="aviso-check" for="setup-acepto"><input type="checkbox" id="setup-acepto"> Acepto este aviso</label>
+        <p id="setup-error" role="alert" style="display:none"></p>
+        <button type="button" id="btn-guardar-setup" class="btn-main" onclick="guardarPrimeraConfig()">Guardar y continuar</button>
+        <button type="button" class="btn-link" onclick="cerrarSesion()">Cerrar sesión</button>
+      </div>
     </div>
 
     <div id="view-graficas" style="display: none;">
@@ -256,6 +351,19 @@
              Guardados
           </div>
         </h3>
+        <div id="radar-precision">
+          <h3 class="panel-header-small" style="margin-bottom: 12px; font-size: 16px;">
+            <div class="title-flex">
+              <div class="icon-24">
+                <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              Últimos Registros
+            </div>
+          </h3>
+          <div id="lista-radar" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
         <div class="filtro-fecha">
           <label for="filtro-fecha-historial">Fecha</label>
           <input type="date" id="filtro-fecha-historial" onchange="actualizarVistaHistorial()">
@@ -310,35 +418,35 @@
         
         <button id="btn-toggle-redondeo" class="btn-small" style="background: var(--turquoise-strong); color: white; margin-bottom: 14px; font-weight: 900; font-size: 14px; width: 100%; padding: 12px; border-radius: 12px;" onclick="toggleRedondeo()">redondeo activado</button>
         
-        <div style="margin-bottom: 12px;">
-          <label>Toujeo / Basal</label><input type="number" id="cfg-toujeo" value="56" inputmode="numeric">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+          <div><label>Peso (kg)</label><input type="number" id="cfg-peso" inputmode="decimal" step="any" min="0" placeholder="Opcional"></div>
+          <div><label>Toujeo / Basal</label><input type="number" id="cfg-toujeo" inputmode="decimal" step="any" min="0" placeholder="Opcional"></div>
         </div>
 
-        <!-- CASILLAS DE FACTORES DE CORRECCIÓN INDIVIDUALES -->
-        <h3 style="color: var(--turquoise-strong); font-size: 15px; margin-top: 10px; margin-bottom: 8px;">Factores de Corrección (1U baja X mg/dL)</h3>
+        <h3 style="color: var(--turquoise-strong); font-size: 15px; margin-top: 10px; margin-bottom: 8px;">Factor de sensibilidad (1 U baja X mg/dL)</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-          <div><label>FC Desayuno</label><input type="number" id="cfg-fc-desayuno" value="30" inputmode="decimal" step="any"></div>
-          <div><label>FC Colación</label><input type="number" id="cfg-fc-mpm" value="30" inputmode="decimal" step="any"></div>
-          <div><label>FC Almuerzo</label><input type="number" id="cfg-fc-alm" value="30" inputmode="decimal" step="any"></div>
-          <div><label>FC Once</label><input type="number" id="cfg-fc-mam" value="30" inputmode="decimal" step="any"></div>
-          <div><label>FC Cena</label><input type="number" id="cfg-fc-cena" value="30" inputmode="decimal" step="any"></div>
-          <div><label>FC Corroborar</label><input type="number" id="cfg-fc-corroborar" value="30" inputmode="decimal" step="any"></div>
+          <div><label>FC Desayuno</label><input type="number" id="cfg-fc-desayuno" inputmode="decimal" step="any" min="0" placeholder="mg/dL"></div>
+          <div><label>FC Colación</label><input type="number" id="cfg-fc-mpm" inputmode="decimal" step="any" min="0" placeholder="mg/dL"></div>
+          <div><label>FC Almuerzo</label><input type="number" id="cfg-fc-alm" inputmode="decimal" step="any" min="0" placeholder="mg/dL"></div>
+          <div><label>FC Once</label><input type="number" id="cfg-fc-mam" inputmode="decimal" step="any" min="0" placeholder="mg/dL"></div>
+          <div><label>FC Cena</label><input type="number" id="cfg-fc-cena" inputmode="decimal" step="any" min="0" placeholder="mg/dL"></div>
+          <div><label>FC Corroborar</label><input type="number" id="cfg-fc-corroborar" inputmode="decimal" step="any" min="0" placeholder="mg/dL"></div>
         </div>
         
         <h3>Objetivos (Metas)</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-          <div><label>Antes Comer</label><input type="number" id="cfg-meta-antes" value="100" inputmode="numeric"></div>
-          <div><label>Corrección</label><input type="number" id="cfg-meta-cor" value="150" inputmode="numeric"></div>
+          <div><label>Antes de comer</label><input type="number" id="cfg-meta-antes" inputmode="numeric" placeholder="mg/dL"></div>
+          <div><label>Corrección</label><input type="number" id="cfg-meta-cor" inputmode="numeric" placeholder="mg/dL"></div>
         </div>
         
-        <h3>Ratios (Por 1U)</h3>
+        <h3>Ratios (Por 1 U)</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-          <div><label>Desayuno</label><input type="number" id="cfg-r-desayuno" value="4" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
-          <div><label>Colación</label><input type="number" id="cfg-r-mpm" value="5" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
-          <div><label>Almuerzo</label><input type="number" id="cfg-r-alm" value="5" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
-          <div><label>Once</label><input type="number" id="cfg-r-mam" value="0" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
-          <div style="grid-column: span 2;"><label>Cena</label><input type="number" id="cfg-r-cena" value="14" inputmode="decimal" step="any" onchange="actualizarTextosComida()"></div>
-          <div style="grid-column: span 2;"><label>Extra por grasas (% a los carbohidratos)</label><input type="number" id="cfg-factor-grasas" value="30" inputmode="decimal" step="any" min="0" max="100"></div>
+          <div><label>Desayuno</label><input type="number" id="cfg-r-desayuno" inputmode="decimal" step="any" min="0" placeholder="g" onchange="actualizarTextosComida()"></div>
+          <div><label>Colación</label><input type="number" id="cfg-r-mpm" inputmode="decimal" step="any" min="0" placeholder="g" onchange="actualizarTextosComida()"></div>
+          <div><label>Almuerzo</label><input type="number" id="cfg-r-alm" inputmode="decimal" step="any" min="0" placeholder="g" onchange="actualizarTextosComida()"></div>
+          <div><label>Once</label><input type="number" id="cfg-r-mam" inputmode="decimal" step="any" min="0" placeholder="g" onchange="actualizarTextosComida()"></div>
+          <div style="grid-column: span 2;"><label>Cena</label><input type="number" id="cfg-r-cena" inputmode="decimal" step="any" min="0" placeholder="g" onchange="actualizarTextosComida()"></div>
+          <div style="grid-column: span 2;"><label>Extra por grasas (% a los carbohidratos)</label><input type="number" id="cfg-factor-grasas" inputmode="decimal" step="any" min="0" max="100" placeholder="0"></div>
         </div>
 
         <label for="cfg-tema">Tema</label>
@@ -348,27 +456,59 @@
           <option value="blanco">Claro</option>
         </select>
 
-        <h3>Emergencias</h3>
+        <h3>Contacto de emergencia</h3>
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-          <a href="tel:131" id="btn-llamar-emergencia" class="btn-emergency" style="flex:1;">LLAMAR<br>AMBULANCIA</a>
-          <a href="tel:973808283" id="btn-llamar-papa" class="btn-papa" style="flex:1;">LLAMAR<br>PAPÁ / MAMÁ</a>
+          <a href="#" id="btn-llamar-emergencia" class="btn-emergency" style="flex:1; display:none;">LLAMAR<br>AMBULANCIA</a>
+          <a href="#" id="btn-llamar-contacto" class="btn-papa" style="flex:1; display:none;">Llamar</a>
         </div>
 
-        <label>Ambulancia</label><input type="tel" id="cfg-tel-emergencia" value="131" class="input-emergencia bg-rojo-alerta">
-        <label>Teléfono Familia</label><input type="tel" id="cfg-tel-papa" value="973808283" class="input-emergencia bg-blanco-sombra">
+        <label for="cfg-contacto-nombre">Nombre</label><input type="text" id="cfg-contacto-nombre" placeholder="Nombre del contacto" autocomplete="name">
+        <label for="cfg-tel-contacto">Teléfono</label><input type="tel" id="cfg-tel-contacto" placeholder="Teléfono" autocomplete="tel" class="input-emergencia bg-blanco-sombra">
+        <label for="cfg-tel-emergencia">Ambulancia</label><input type="tel" id="cfg-tel-emergencia" placeholder="Ej: 131" autocomplete="tel" class="input-emergencia bg-rojo-alerta">
+        <p id="config-sync-msg" role="alert" style="display:none"></p>
+        <button type="button" id="btn-reintentar-config" class="btn-accent" style="display:none; margin-top: 8px; background: #C62828;" onclick="reintentarGuardarConfig()">Reintentar subida</button>
         
         <button id="btn-guardar-config" class="btn-accent" style="margin-top: 10px; background: var(--turquoise-strong); padding: 12px; font-size: 16px; border-radius: 12px;" onclick="guardarConfig()">Guardar Todo</button>
+
+        <aside class="donar-card">
+          <svg class="donar-oso" viewBox="0 0 120 96" aria-hidden="true">
+            <rect x="2" y="2" width="116" height="92" rx="18" fill="#088387"/>
+            <rect x="34" y="44" width="46" height="22" rx="3" fill="#2C3A40"/>
+            <rect x="37" y="47" width="40" height="14" rx="2" fill="#FAF8F5"/>
+            <rect x="41" y="51" width="16" height="2" rx="1" fill="#088387"/>
+            <rect x="41" y="55" width="26" height="2" rx="1" fill="#C9D6D6"/>
+            <path d="M30 66 h54 l6 8 H24 z" fill="#2C3A40"/>
+            <circle cx="48" cy="30" r="8" fill="#FFFFFF"/>
+            <circle cx="74" cy="30" r="8" fill="#FFFFFF"/>
+            <circle cx="61" cy="40" r="18" fill="#FFFFFF"/>
+            <circle cx="55" cy="38" r="2.2" fill="#2C3A40"/>
+            <circle cx="67" cy="38" r="2.2" fill="#2C3A40"/>
+            <ellipse cx="61" cy="44" rx="3.4" ry="2.2" fill="#2C3A40"/>
+            <ellipse cx="49" cy="60" rx="6" ry="3.2" fill="#FFFFFF"/>
+            <ellipse cx="73" cy="60" rx="6" ry="3.2" fill="#FFFFFF"/>
+            <rect x="92" y="52" width="14" height="16" rx="3" fill="#FFFFFF"/>
+            <path d="M106 56 h3.5 a4 4 0 0 1 0 8 H106" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+            <rect x="94.5" y="55" width="9" height="7" rx="1.5" fill="#F3C623"/>
+            <path d="M97 48 q2-4 0-7" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+            <path d="M102 48 q2-4 0-7" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <div class="donar-cuerpo">
+            <p>Polar es gratis. Si te ayuda, puedes invitarnos un café para seguir mejorándola y mantenerla funcionando.</p>
+            <a class="btn-donar" href="https://ko-fi.com/polarapp" target="_blank" rel="noopener">Apoyar Polar ☕</a>
+          </div>
+        </aside>
       </div>
     </div>
 
     <div id="view-avatars" style="display: none;">
       <div class="card card-avatars card-full" id="panel-avatars" style="display: block;">
         <h3 class="panel-header-small">
-          <span>Bestias de Poder</span>
+          <span>Compañeros</span>
           <div class="title-flex">
             <button class="btn-close-panel" onclick="switchTab('home')">×</button>
           </div>
         </h3>
+        <p id="avatar-resumen" class="avatar-resumen"></p>
         <div id="avatars-grid-container" class="avatars-grid"></div>
       </div>
     </div>
@@ -376,12 +516,12 @@
     <div id="view-usuario" style="display: none;">
       <div class="card card-settings card-full" id="panel-usuario" style="display: block;">
         <h3 class="panel-header-small">
-          Perfil de Líder
+          Perfil
           <button class="btn-close-panel" onclick="switchTab('home')">×</button>
         </h3>
-        <label>Cambiar Nombre Visible</label>
+        <label>Nombre visible</label>
         <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-          <input type="text" id="input-nuevo-nombre" placeholder="Ej: Deivis" style="margin-bottom: 0; flex: 1;">
+          <input type="text" id="input-nuevo-nombre" placeholder="Tu nombre" style="margin-bottom: 0; flex: 1;">
           <button class="btn-accent" style="margin-top: 0; width: auto; padding: 0 20px; background: var(--turquoise-strong);" onclick="guardarNombreUsuario()">Guardar</button>
         </div>
       </div>
@@ -411,7 +551,7 @@
 </div>
 
 <!-- LÓGICA DE LA APP -->
-<script src="app.js?v=15"></script>
+<script src="app.js?v=19"></script>
 
 <!-- CIERRE INMEDIATO Y DESENFOQUE PROFESIONAL -->
 <script>

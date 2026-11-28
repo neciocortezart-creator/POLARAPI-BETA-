@@ -1,12 +1,7 @@
-const createClient = window.supabase && window.supabase.createClient;
-const supabaseUrl = 'https://rgwawwdldqodzmsizean.supabase.co'; 
-const supabaseKey = 'sb_publishable_-4Q07zNvB5Ep9fLwIZW6Yw_axmOPTM7';
-const polarDb = createClient ? createClient(supabaseUrl, supabaseKey) : null;
-
-// Claves internas estables: no se renombran ni se reescriben en Supabase ni en polar_config.
-// mam sigue siendo Once (cfg-r-mam; el ratio 0 no se toca). mpm era Merienda y ahora se muestra como Colación (cfg-r-mpm).
+const POLAR_AUTH_REDIRECT = 'https://neciocortezart-creator.github.io/POLARAPI-BETA-/';
+const AVISO_MEDICO = 'Polar es una herramienta de apoyo. No reemplaza las indicaciones de tu médico.';
+// mam sigue siendo Once. mpm se muestra como Colación. Las claves no se reescriben.
 const ORDEN_COMIDAS = ['desayuno', 'mpm', 'almuerzo', 'mam', 'cena'];
-
 const NOMBRES_COMIDA = {
   desayuno: 'Desayuno',
   mpm: 'Colación',
@@ -16,6 +11,114 @@ const NOMBRES_COMIDA = {
   corroborar: 'Revisión',
   'post-comida': '2H Post'
 };
+const COMIDAS_RATIO = ORDEN_COMIDAS;
+
+function leerParametrosAuth() {
+  try {
+    const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    const query = new URLSearchParams(location.search || '');
+    const leer = (k) => hash.get(k) || query.get(k) || '';
+    return {
+      type: (leer('type') || '').toLowerCase(),
+      error: leer('error_description') || leer('error') || '',
+      tieneToken: !!(leer('access_token') || leer('code') || leer('token_hash'))
+    };
+  } catch (e) {
+    return { type: '', error: '', tieneToken: false };
+  }
+}
+const parametrosAuthIniciales = leerParametrosAuth();
+
+const createClient = window.supabase && window.supabase.createClient;
+const supabaseUrl = 'https://rgwawwdldqodzmsizean.supabase.co'; 
+const supabaseKey = 'sb_publishable_-4Q07zNvB5Ep9fLwIZW6Yw_axmOPTM7';
+const polarDb = createClient ? createClient(supabaseUrl, supabaseKey) : null;
+
+let recuperacionPendiente = parametrosAuthIniciales.type === 'recovery';
+try {
+  if (localStorage.getItem('polar_recuperacion_pendiente') === '1') recuperacionPendiente = true;
+} catch (e) {}
+
+function claveUsuario(base, id) {
+  const uid = id || localStorage.getItem('polar_user_id') || '';
+  if (!uid) return null;
+  return base + '_' + uid;
+}
+function leerTextoUsuario(base, fallback) {
+  const c = claveUsuario(base);
+  if (!c) return fallback;
+  const v = localStorage.getItem(c);
+  return v === null ? fallback : v;
+}
+function guardarTextoUsuario(base, valor) {
+  const c = claveUsuario(base);
+  if (!c) return;
+  localStorage.setItem(c, String(valor));
+}
+function leerJsonUsuario(base, fallback) {
+  try {
+    const raw = leerTextoUsuario(base, null);
+    if (raw === null || raw === undefined) return fallback;
+    return JSON.parse(raw);
+  } catch (e) {
+    return fallback;
+  }
+}
+function guardarJsonUsuario(base, valor) {
+  guardarTextoUsuario(base, JSON.stringify(valor));
+}
+function leerHistorial() { return leerJsonUsuario('historial_polar', []); }
+function guardarHistorial(v) { guardarJsonUsuario('historial_polar', v); }
+function leerCitas() { return leerJsonUsuario('citas_polar', []); }
+function guardarCitas(v) { guardarJsonUsuario('citas_polar', v); }
+function leerCola() { return leerJsonUsuario('polar_cola_sync', []); }
+function guardarCola(v) { guardarJsonUsuario('polar_cola_sync', v); }
+function guardarConfigLocal() {
+  const c = claveUsuario('polar_config');
+  if (!c) return;
+  localStorage.setItem(c, JSON.stringify(config));
+}
+function borrarClaveUsuario(base, id) {
+  const c = claveUsuario(base, id);
+  if (c) localStorage.removeItem(c);
+}
+function migrarGlobalSiFalta(base, uid) {
+  const dest = base + '_' + uid;
+  if (localStorage.getItem(dest) !== null) return;
+  const g = localStorage.getItem(base);
+  if (g === null) return;
+  localStorage.setItem(dest, g);
+  localStorage.removeItem(base);
+}
+function borrarDatosLocalesDe(uid) {
+  if (uid) {
+    ['polar_config', 'polar_cola_sync', 'polar_config_pendiente', 'citas_polar', 'historial_polar', 'polar_redondeo_activo'].forEach((base) => {
+      localStorage.removeItem(base + '_' + uid);
+    });
+    localStorage.removeItem('polar_nombre_lider_' + uid);
+  }
+  ['polar_session_activa', 'polar_rol', 'polar_user_id', 'historial_polar', 'citas_polar', 'polar_cola_sync', 'polar_redondeo_activo', 'polar_recuperacion_pendiente'].forEach((k) => {
+    localStorage.removeItem(k);
+  });
+  const sobras = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+    if (k.indexOf('notif_cita_') === 0) sobras.push(k);
+    else if (uid && k.indexOf(uid) !== -1 && k.indexOf('polar_') === 0) sobras.push(k);
+  }
+  sobras.forEach((k) => localStorage.removeItem(k));
+}
+
+if (polarDb && polarDb.auth && typeof polarDb.auth.onAuthStateChange === 'function') {
+  polarDb.auth.onAuthStateChange(function (event) {
+    if (event === 'PASSWORD_RECOVERY') {
+      recuperacionPendiente = true;
+      try { localStorage.setItem('polar_recuperacion_pendiente', '1'); } catch (e) {}
+      if (window.__polarIniciada && typeof mostrarRecuperacion === 'function') mostrarRecuperacion();
+    }
+  });
+}
 
 function claveComida(tipo) {
   if (tipo == null) return '';
@@ -54,6 +157,7 @@ function switchTab(tabId) {
   }
 
   document.getElementById('main-calculator').style.display = 'none';
+  document.getElementById('view-setup').style.display = 'none';
   document.getElementById('view-graficas').style.display = 'none';
   document.getElementById('view-historial').style.display = 'none';
   document.getElementById('view-citas').style.display = 'none';
@@ -63,13 +167,15 @@ function switchTab(tabId) {
 
   const radar = document.getElementById('radar-precision');
   if (radar) radar.style.display = 'none';
+  const donarInicio = document.querySelector('.donar-card-inicio');
+  if (donarInicio) donarInicio.style.display = tabId === 'home' ? 'flex' : 'none';
 
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
   if (tabId === 'home') {
-    document.getElementById('main-calculator').style.display = 'grid'; 
-    if (radar) radar.style.display = 'block';
+    document.getElementById('main-calculator').style.display = 'grid';
     document.getElementById('nav-home').classList.add('active');
+    if (typeof actualizarAvisoCalculo === 'function') actualizarAvisoCalculo();
     
     if(document.getElementById('glucosa').value !== '' || document.getElementById('carbos').value !== '') {
        calcular(true);
@@ -82,6 +188,7 @@ function switchTab(tabId) {
   } 
   else if (tabId === 'historial') {
     document.getElementById('view-historial').style.display = 'block';
+    if (radar) radar.style.display = 'block';
     document.getElementById('nav-historial').classList.add('active');
     actualizarVistaHistorial();
   } 
@@ -89,7 +196,15 @@ function switchTab(tabId) {
     document.getElementById('view-citas').style.display = 'block';
     renderCitas();
   } 
+  else if (tabId === 'setup') {
+    document.getElementById('view-setup').style.display = 'block';
+    if (typeof pintarSetupDesdeConfig === 'function') pintarSetupDesdeConfig();
+  }
   else if (tabId === 'config') {
+    if (typeof config !== 'undefined' && config && !config.setupCompleto) {
+      switchTab('setup');
+      return;
+    }
     document.getElementById('view-config').style.display = 'block';
     document.getElementById('nav-config').classList.add('active');
   }
@@ -103,7 +218,7 @@ function switchTab(tabId) {
 }
 
 function actualizarRadar() {
-  const historial = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+  const historial = leerHistorial();
   const listaRadar = document.getElementById('lista-radar');
   if (!listaRadar) return;
   
@@ -172,24 +287,25 @@ async function sincronizarDatosNube() {
       };
     });
 
-    localStorage.setItem('historial_polar', JSON.stringify(historialDescargado));
+    guardarHistorial(historialDescargado);
 
     if (typeof renderGraficoPicos === 'function') renderGraficoPicos();
     if (document.getElementById('view-historial').style.display === 'block') {
       if (typeof actualizarVistaHistorial === 'function') actualizarVistaHistorial();
     }
     actualizarRadar();
+    if (typeof revisarAvatares === 'function') revisarAvatares(true);
   }
 }
 
 async function procesarColaOffline() {
   if(!navigator.onLine) return;
-  let cola = JSON.parse(localStorage.getItem('polar_cola_sync') || '[]');
+  let cola = leerCola();
   if(cola.length === 0) return;
   
   const { error } = await polarDb.from('historial_polar').insert(cola);
   if(!error) {
-     localStorage.removeItem('polar_cola_sync');
+     borrarClaveUsuario('polar_cola_sync');
   }
 }
 window.addEventListener('online', procesarColaOffline);
@@ -218,11 +334,11 @@ function activarSuscripcionTiempoReal() {
 
 async function revisarRegistrosAntiguos() {
   const userId = localStorage.getItem('polar_user_id');
-  if (!userId) return;
+  if (!userId || !polarDb) return;
 
   const fechaLimite = new Date();
   fechaLimite.setDate(fechaLimite.getDate() - 30);
-  const isoFechaLimite = fechaLimite.toISOString().split('T')[0];
+  const isoFechaLimite = fechaLimite.toISOString();
 
   const { data: registrosViejos, error: errorSelect } = await polarDb
     .from('historial_polar')
@@ -230,144 +346,287 @@ async function revisarRegistrosAntiguos() {
     .eq('paciente_id', userId)
     .lt('created_at', isoFechaLimite);
 
-  if (errorSelect) return;
+  if (errorSelect || !registrosViejos || !registrosViejos.length) return;
 
-  if (registrosViejos && registrosViejos.length > 0) {
-    if (confirm(`Líder, tienes ${registrosViejos.length} registros con más de 30 días de antigüedad. ¿Deseas descargar el PDF mensual ahora antes de que se borren automáticamente para mantener el sistema optimizado?`)) {
-        generarPDFElite();
-    }
+  const n = registrosViejos.length;
+  const quierePdf = confirm('Tienes ' + n + ' registros con más de 30 días. ¿Quieres descargar el PDF ahora?');
+  if (quierePdf) {
+    try { generarPDFElite(); } catch (e) { console.error(e); }
+  }
+  const quiereBorrar = confirm('¿Quieres borrar esos ' + n + ' registros de más de 30 días? Si eliges cancelar, se quedan guardados.');
+  if (!quiereBorrar) return;
 
-    const idsBorrar = registrosViejos.map(r => r.id);
-    const { error: errorDelete } = await polarDb
-      .from('historial_polar')
-      .delete()
-      .in('id', idsBorrar);
+  const idsBorrar = registrosViejos.map(r => r.id);
+  const { error: errorDelete } = await polarDb
+    .from('historial_polar')
+    .delete()
+    .in('id', idsBorrar);
 
-    if (!errorDelete) {
-       await sincronizarDatosNube();
-    }
+  if (!errorDelete) {
+    await sincronizarDatosNube();
+  } else {
+    alert('No se pudieron borrar los registros antiguos. Siguen guardados.');
   }
 }
 
 function verificarSesion() {
   const session = localStorage.getItem('polar_session_activa'); 
-  if (session === 'true') {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'block';
+  const login = document.getElementById('login-screen');
+  const main = document.getElementById('main-app');
+  if (session === 'true' && !recuperacionPendiente) {
+    if (login) login.style.display = 'none';
+    if (main) main.style.display = 'block';
+    const navBottom = document.querySelector('.bottom-nav');
+    if (navBottom) navBottom.classList.add('show');
   } else {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('main-app').style.display = 'none';
+    if (login) login.style.display = 'flex';
+    if (main) main.style.display = 'none';
   }
 }
 
 function mostrarErrorLogin(msg) {
   const el = document.getElementById('login-error');
-  if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+  if (el) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
   else if (msg) alert(msg);
 }
 
-function traducirErrorLogin(error) {
-  const msg = ((error && error.message) || '').toLowerCase();
-  const status = error && error.status;
-  if (!navigator.onLine) return 'Sin internet. Conéctate e intenta de nuevo.';
-  if (msg.includes('invalid login credentials')) return 'Correo o código incorrectos. Deben ser los mismos que creaste en Supabase (Authentication > Users).';
-  if (msg.includes('email not confirmed')) return 'Ese correo aún no está confirmado. Confírmalo en Supabase (Authentication > Users) o desde el correo de confirmación.';
-  if (status === 429 || msg.includes('rate limit')) return 'Demasiados intentos. Espera unos minutos y vuelve a probar.';
+function mostrarOkLogin(msg) {
+  const el = document.getElementById('login-ok');
+  if (el) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+}
+
+function traducirErrorAuth(error) {
+  const msg = ((error && (error.message || error.error_description || error.msg)) || '').toLowerCase();
+  const status = error && (error.status || error.statusCode);
+  if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) return 'Sin internet. Conéctate e intenta de nuevo.';
+  if (msg.includes('invalid login') || msg.includes('invalid credentials')) return 'Correo o contraseña incorrectos.';
+  if (msg.includes('email not confirmed')) return 'Confirma tu correo antes de entrar. Revisa tu bandeja.';
+  if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('user already')) return 'Ese correo ya tiene una cuenta. Entra o recupera tu contraseña.';
+  if (msg.includes('weak') || msg.includes('pwned') || msg.includes('password should') || msg.includes('at least')) return 'La contraseña es muy débil. Usa al menos 8 caracteres.';
+  if (status === 429 || msg.includes('rate limit') || msg.includes('too many') || msg.includes('over_request') || msg.includes('email rate')) return 'Demasiados intentos. Espera un momento y vuelve a probar.';
+  if (msg.includes('expired') || msg.includes('invalid') && msg.includes('link') || msg.includes('otp')) return 'El enlace venció o no es válido. Pide otro correo.';
   if ((error && error.name === 'AuthRetryableFetchError') || msg.includes('failed to fetch') || msg.includes('load failed') || msg.includes('network') || status === 0 || status >= 500)
-    return 'No se pudo conectar con el servidor. Si tienes internet, revisa que el proyecto de Supabase no esté pausado.';
-  return 'Error: ' + ((error && error.message) || 'desconocido');
+    return 'No se pudo conectar. Revisa tu internet e intenta de nuevo.';
+  return 'No se pudo completar. Intenta de nuevo.';
+}
+function traducirErrorLogin(error) { return traducirErrorAuth(error); }
+
+function traducirErrorUrl(texto) {
+  const m = (texto || '').toLowerCase();
+  if (!m) return '';
+  if (m.includes('expired') || m.includes('invalid') || m.includes('venc')) return 'El enlace venció o no es válido. Pide otro correo.';
+  return 'No se pudo abrir el enlace. Pide otro correo.';
+}
+
+function limpiarUrlAuth() {
+  try {
+    const tieneHash = !!(location.hash && location.hash.length > 1);
+    const busca = location.search || '';
+    if (!tieneHash && !/[?&](code|type|error|token_hash)=/.test(busca)) return;
+    const url = new URL(location.href);
+    ['code', 'token_hash', 'type', 'error', 'error_code', 'error_description'].forEach((k) => url.searchParams.delete(k));
+    const search = url.searchParams.toString();
+    history.replaceState(null, '', url.pathname + (search ? '?' + search : ''));
+  } catch (e) {}
+}
+
+function mostrarAuth(vista) {
+  ['entrar', 'crear', 'olvide', 'nueva'].forEach((v) => {
+    const el = document.getElementById('auth-' + v);
+    if (el) el.style.display = (v === vista) ? 'block' : 'none';
+  });
+  mostrarErrorLogin('');
+  if (vista !== 'entrar') mostrarOkLogin('');
+}
+
+function mostrarRecuperacion() {
+  recuperacionPendiente = true;
+  try { localStorage.setItem('polar_recuperacion_pendiente', '1'); } catch (e) {}
+  const login = document.getElementById('login-screen');
+  const main = document.getElementById('main-app');
+  if (login) login.style.display = 'flex';
+  if (main) main.style.display = 'none';
+  mostrarAuth('nueva');
+  mostrarOkLogin('Elige una contraseña nueva para tu cuenta.');
+}
+
+function correoValido(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function toggleVerCodigo() {
   const i = document.getElementById('login-pass');
   const b = document.getElementById('btn-ver-codigo');
+  if (!i || !b) return;
   const ver = i.type === 'password';
   i.type = ver ? 'text' : 'password';
   b.textContent = ver ? 'Ocultar' : 'Mostrar';
 }
 
 async function validarAcceso() {
-  const btn = document.querySelector('#login-screen .btn-main');
+  const btn = document.getElementById('btn-acceder');
   const user = document.getElementById('login-user').value.trim().toLowerCase();
-  const pass = document.getElementById('login-pass').value.trim();
+  const pass = document.getElementById('login-pass').value;
 
   mostrarErrorLogin('');
-  if (!user || !pass) { mostrarErrorLogin('Escribe tu correo y tu código.'); return; }
-  if (!polarDb) { mostrarErrorLogin('No cargó la conexión con Supabase. Revisa tu internet y recarga la app.'); return; }
+  mostrarOkLogin('');
+  if (!user || !pass) { mostrarErrorLogin('Escribe tu correo y tu contraseña.'); return; }
+  if (!correoValido(user)) { mostrarErrorLogin('Escribe un correo válido.'); return; }
+  if (!polarDb) { mostrarErrorLogin('No se pudo conectar. Revisa tu internet e intenta de nuevo.'); return; }
 
   if (btn) { btn.disabled = true; btn.dataset.txt = btn.innerText; btn.innerText = 'Entrando...'; }
   try {
     const { data, error } = await polarDb.auth.signInWithPassword({ email: user, password: pass });
-    if (error) {
-      console.error('Error de login:', error);
-      mostrarErrorLogin(traducirErrorLogin(error));
+    if (error || !data || !data.user) {
+      mostrarErrorLogin(traducirErrorAuth(error || { message: 'invalid login credentials' }));
       document.getElementById('login-pass').value = '';
       return;
     }
-
-    localStorage.setItem('polar_session_activa', 'true');
-    localStorage.setItem('polar_rol', data.user.email);
-    localStorage.setItem('polar_user_id', data.user.id);
-
-    const meta = data.user.user_metadata || {};
-    if (meta.nombre_lider) localStorage.setItem('polar_nombre_lider_' + data.user.id, meta.nombre_lider);
-    if (meta.config_elite) {
-      config = meta.config_elite;
-      localStorage.setItem('polar_config', JSON.stringify(config));
-    }
-
-    // Pasos secundarios: si alguno falla, NO deben impedir el acceso
-    for (const paso of [sincronizarDatosNube, activarSuscripcionTiempoReal, revisarRegistrosAntiguos]) {
-      try { await paso(); } catch (e) { console.error('Paso posterior al login falló:', e); }
-    }
-    cargarNombreUsuario();
-    window.location.reload();
+    await activarSesion(data.user);
   } catch (e) {
-    console.error('Login falló:', e);
-    mostrarErrorLogin(traducirErrorLogin(e));
+    mostrarErrorLogin(traducirErrorAuth(e));
   } finally {
     if (btn) { btn.disabled = false; btn.innerText = btn.dataset.txt || 'Acceder'; }
   }
 }
 
+async function crearCuenta() {
+  const btn = document.getElementById('btn-crear-cuenta');
+  const email = document.getElementById('signup-email').value.trim().toLowerCase();
+  const pass = document.getElementById('signup-pass').value;
+  const pass2 = document.getElementById('signup-pass2').value;
+  mostrarErrorLogin('');
+  mostrarOkLogin('');
+  if (!correoValido(email)) { mostrarErrorLogin('Escribe un correo válido.'); return; }
+  if (!pass || pass.length < 8) { mostrarErrorLogin('La contraseña debe tener al menos 8 caracteres.'); return; }
+  if (pass !== pass2) { mostrarErrorLogin('Las contraseñas no coinciden.'); return; }
+  if (!polarDb) { mostrarErrorLogin('No se pudo conectar. Revisa tu internet e intenta de nuevo.'); return; }
+  if (btn) { btn.disabled = true; btn.dataset.txt = btn.innerText; btn.innerText = 'Creando...'; }
+  try {
+    const { data, error } = await polarDb.auth.signUp({
+      email: email,
+      password: pass,
+      options: { emailRedirectTo: POLAR_AUTH_REDIRECT }
+    });
+    if (error) { mostrarErrorLogin(traducirErrorAuth(error)); return; }
+    if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      mostrarErrorLogin('Ese correo ya tiene una cuenta. Entra o recupera tu contraseña.');
+      return;
+    }
+    if (data && data.session) {
+      try { await polarDb.auth.signOut(); } catch (e) {}
+    }
+    document.getElementById('signup-pass').value = '';
+    document.getElementById('signup-pass2').value = '';
+    mostrarAuth('entrar');
+    const loginUser = document.getElementById('login-user');
+    if (loginUser) loginUser.value = email;
+    mostrarOkLogin('Te enviamos un correo. Confírmalo y después entra.');
+  } catch (e) {
+    mostrarErrorLogin(traducirErrorAuth(e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = btn.dataset.txt || 'Crear cuenta'; }
+  }
+}
+
+async function enviarRecuperacion() {
+  const btn = document.getElementById('btn-enviar-reset');
+  const email = document.getElementById('reset-email').value.trim().toLowerCase();
+  mostrarErrorLogin('');
+  mostrarOkLogin('');
+  if (!correoValido(email)) { mostrarErrorLogin('Escribe un correo válido.'); return; }
+  if (!polarDb) { mostrarErrorLogin('No se pudo conectar. Revisa tu internet e intenta de nuevo.'); return; }
+  if (btn) { btn.disabled = true; btn.innerText = 'Enviando...'; }
+  try {
+    const { error } = await polarDb.auth.resetPasswordForEmail(email, { redirectTo: POLAR_AUTH_REDIRECT });
+    if (error) { mostrarErrorLogin(traducirErrorAuth(error)); return; }
+    mostrarOkLogin('Si el correo está registrado, te enviamos un enlace para elegir una contraseña nueva.');
+  } catch (e) {
+    mostrarErrorLogin(traducirErrorAuth(e));
+  } finally {
+    if (btn) btn.innerText = 'Enviar enlace';
+  }
+}
+
+async function guardarNuevaContrasena() {
+  const btn = document.getElementById('btn-guardar-pass');
+  const pass = document.getElementById('new-pass').value;
+  const pass2 = document.getElementById('new-pass2').value;
+  mostrarErrorLogin('');
+  if (!pass || pass.length < 8) { mostrarErrorLogin('La contraseña debe tener al menos 8 caracteres.'); return; }
+  if (pass !== pass2) { mostrarErrorLogin('Las contraseñas no coinciden.'); return; }
+  if (!polarDb) { mostrarErrorLogin('No se pudo conectar. Revisa tu internet e intenta de nuevo.'); return; }
+  if (btn) { btn.disabled = true; btn.innerText = 'Guardando...'; }
+  try {
+    const { data, error } = await polarDb.auth.updateUser({ password: pass });
+    if (error) { mostrarErrorLogin(traducirErrorAuth(error)); return; }
+    recuperacionPendiente = false;
+    try { localStorage.removeItem('polar_recuperacion_pendiente'); } catch (e) {}
+    let user = data && data.user;
+    try {
+      const ses = await polarDb.auth.getSession();
+      if (ses && ses.data && ses.data.session && ses.data.session.user) user = ses.data.session.user;
+    } catch (e) {}
+    if (user && user.id) await activarSesion(user);
+    else {
+      mostrarAuth('entrar');
+      mostrarOkLogin('Contraseña actualizada. Ya puedes entrar.');
+    }
+  } catch (e) {
+    mostrarErrorLogin(traducirErrorAuth(e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = 'Guardar contraseña'; }
+  }
+}
+
 async function cerrarSesion() {
-  await polarDb.auth.signOut();
-  localStorage.removeItem('polar_session_activa');
-  localStorage.removeItem('polar_rol');
-  localStorage.removeItem('polar_user_id');
-  localStorage.removeItem('historial_polar'); 
-  localStorage.removeItem('citas_polar');
-  
-  document.getElementById('login-user').value = '';
-  document.getElementById('login-pass').value = '';
-  document.getElementById('lista-historial').innerHTML = '';
-  const btnNombre = document.getElementById('btn-usuario-nombre');
-  if (btnNombre) btnNombre.innerText = 'Líder';
-  
+  const uid = localStorage.getItem('polar_user_id');
+  const pendiente = uid && localStorage.getItem('polar_config_pendiente_' + uid) === '1';
+  if (pendiente || (config && config.setupCompleto)) {
+    try { await sincronizarConfigNube(); } catch (e) {}
+  }
+  try { await procesarColaOffline(); } catch (e) {}
+  try { if (polarDb && polarDb.auth) await polarDb.auth.signOut(); } catch (e) {}
+  recuperacionPendiente = false;
+  borrarDatosLocalesDe(uid);
+  config = configVacia();
+  const lu = document.getElementById('login-user');
+  const lp = document.getElementById('login-pass');
+  if (lu) lu.value = '';
+  if (lp) lp.value = '';
+  const lista = document.getElementById('lista-historial');
+  if (lista) lista.innerHTML = '';
+  const btnNom = document.getElementById('btn-usuario-nombre');
+  if (btnNom) btnNom.innerText = 'Perfil';
+  mostrarAuth('entrar');
+  mostrarErrorLogin('');
+  mostrarOkLogin('');
+  const panel = document.getElementById('panel-menu');
+  if (panel && panel.classList.contains('open')) toggleMenuPanel();
   switchTab('home');
-  
-  const panelMenu = document.getElementById('panel-menu');
-  if (panelMenu.classList.contains('open')) toggleMenuPanel();
+  if (typeof pintarTodo === 'function') pintarTodo();
   verificarSesion();
 }
 
 async function guardarNombreUsuario() {
   const nuevoNombre = document.getElementById('input-nuevo-nombre').value.trim();
-  const userId = localStorage.getItem('polar_user_id') || 'default';
-  if(nuevoNombre) {
+  const userId = localStorage.getItem('polar_user_id') || '';
+  if (nuevoNombre && userId) {
     localStorage.setItem('polar_nombre_lider_' + userId, nuevoNombre);
     const btnNombre = document.getElementById('btn-usuario-nombre');
     if (btnNombre) btnNombre.innerText = nuevoNombre;
-    polarDb.auth.updateUser({ data: { nombre_lider: nuevoNombre } });
+    if (polarDb && polarDb.auth) {
+      try { await polarDb.auth.updateUser({ data: { nombre_lider: nuevoNombre } }); } catch (e) {}
+    }
     switchTab('home');
   }
 }
 
 function cargarNombreUsuario() {
-  const userId = localStorage.getItem('polar_user_id') || 'default';
-  const nombreGuardado = localStorage.getItem('polar_nombre_lider_' + userId) || 'Líder';
-  const btnNombre = document.getElementById('btn-usuario-nombre');
-  if (btnNombre) btnNombre.innerText = nombreGuardado;
+  const userId = localStorage.getItem('polar_user_id') || '';
+  const nombreGuardado = (userId && localStorage.getItem('polar_nombre_lider_' + userId)) || 'Perfil';
+  const btn = document.getElementById('btn-usuario-nombre');
+  if (btn) btn.innerText = nombreGuardado;
 }
 
 let backupData = null; 
@@ -384,11 +643,11 @@ function activarDeshacer(tipo, datosViejos) {
 function deshacerBorrado() {
   if (!backupData) return;
   if (backupData.tipo === 'citas') { 
-      localStorage.setItem('citas_polar', JSON.stringify(backupData.datos)); 
+      guardarCitas(backupData.datos); 
       renderCitas(); 
   } 
   else if (backupData.tipo === 'historial') { 
-      localStorage.setItem('historial_polar', JSON.stringify(backupData.datos)); 
+      guardarHistorial(backupData.datos); 
       actualizarVistaHistorial(); 
       renderGraficoPicos(); 
       actualizarRadar();
@@ -412,7 +671,7 @@ function temaVisible(nombre) {
 function cambiarTema() { 
   const temaElegido = temaVisible(document.getElementById('cfg-tema').value); 
   config.tema = temaElegido; 
-  localStorage.setItem('polar_config', JSON.stringify(config)); 
+  guardarConfigLocal(); 
   aplicarTemaReal(temaElegido); 
   cargarAvatar(); 
 }
@@ -432,7 +691,7 @@ function cambiarFiltroBarras(dias) {
 }
 
 function renderBarrasPorcentaje() {
-    const historialCompleto = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+    const historialCompleto = leerHistorial();
     const ahora = new Date().getTime();
     const tiempoLimite = ahora - (diasFiltroBarras * 24 * 60 * 60 * 1000);
 
@@ -542,7 +801,7 @@ function renderDesgloseComidas(historialFiltrado, textCol) {
         return;
     }
 
-    const nombres = { desayuno: 'Desayuno', mpm: 'Colación', almuerzo: 'Almuerzo', mam: 'Once', cena: 'Cena' };
+    const nombres = NOMBRES_COMIDA;
     const colores = { desayuno: '#FCA311', mam: '#D84B79', almuerzo: '#4CAF50', mpm: '#5B9BD5', cena: '#A35496' };
 
     let html = `<h4 style="font-size: 15px; color: var(--turquoise-strong); margin-bottom: 12px; font-weight: 900;">Promedio de glucosa por comida</h4>`;
@@ -585,7 +844,7 @@ function buscarDiaEspecifico() {
         return;
     }
 
-    const historialCompleto = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+    const historialCompleto = leerHistorial();
     const registrosDelDia = historialCompleto.filter(item => item.iso === fechaSeleccionada);
 
     contenedorResultados.style.display = 'block';
@@ -643,7 +902,7 @@ function buscarDiaEspecifico() {
 function toggleRedondeo() {
     usoRedondeoElite = !usoRedondeoElite;
     actualizarBotonRedondeoUI();
-    localStorage.setItem('polar_redondeo_activo', usoRedondeoElite ? 'true' : 'false');
+    guardarTextoUsuario('polar_redondeo_activo', usoRedondeoElite ? 'true' : 'false');
     if (document.getElementById('resultado').style.display === 'block') {
       calcular(true);
     }
@@ -682,33 +941,86 @@ let calcHistoria = [];
 let calcPosicion = -1;
 let tooltipListenerAdded = false;
 
-let config = {
-  peso: 50, 
-  toujeo: 56, 
-  fc: {
-    desayuno: 30,
-    mam: 30,
-    almuerzo: 30,
-    mpm: 30,
-    cena: 30,
-    corroborar: 30
-  },
-  telEmergencia: "131", 
-  telPapa: "973808283", 
-  avatar: 0, 
-  tema: "elite",
-  ratios: { desayuno: 4, mam: 0, almuerzo: 5, mpm: 5, cena: 14, corroborar: 0 },
-  metas: { antes: 100, correccion: 150 },
-  factorGrasas: 30 // % extra a los carbohidratos cuando la comida tiene grasas
-};
+function configVacia() {
+  return {
+    peso: null,
+    toujeo: null,
+    fc: { desayuno: null, mam: null, almuerzo: null, mpm: null, cena: null, corroborar: null },
+    telEmergencia: '',
+    contactoNombre: '',
+    contactoTelefono: '',
+    avatar: 0,
+    tema: 'elite',
+    ratios: { desayuno: null, mam: null, almuerzo: null, mpm: null, cena: null, corroborar: 0 },
+    metas: { antes: null, correccion: null },
+    factorGrasas: null,
+    setupCompleto: false,
+    aceptoAviso: false
+  };
+}
+function numeroONull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+function numeroPresente(v) { return numeroONull(v) !== null; }
+function configTieneEsquema(c) {
+  if (!c || !c.ratios || !c.fc || !c.metas) return false;
+  for (let i = 0; i < COMIDAS_RATIO.length; i++) {
+    const k = COMIDAS_RATIO[i];
+    if (!numeroPresente(c.ratios[k]) || numeroONull(c.ratios[k]) < 0) return false;
+    if (!numeroPresente(c.fc[k]) || numeroONull(c.fc[k]) <= 0) return false;
+  }
+  if (!numeroPresente(c.metas.antes) || numeroONull(c.metas.antes) <= 0) return false;
+  if (!numeroPresente(c.metas.correccion) || numeroONull(c.metas.correccion) <= 0) return false;
+  return true;
+}
+function normalizarConfig(c, esExistente) {
+  const base = configVacia();
+  if (!c || typeof c !== 'object') return base;
+  const out = Object.assign({}, base, c);
+  out.ratios = Object.assign({}, base.ratios, c.ratios || {});
+  out.metas = Object.assign({}, base.metas, c.metas || {});
+  if (typeof c.fc === 'number' || typeof c.fc === 'string') {
+    const v = numeroONull(c.fc);
+    out.fc = { desayuno: v, mam: v, almuerzo: v, mpm: v, cena: v, corroborar: v };
+  } else {
+    out.fc = Object.assign({}, base.fc, (c.fc && typeof c.fc === 'object') ? c.fc : {});
+  }
+  COMIDAS_RATIO.concat(['corroborar']).forEach((k) => {
+    out.ratios[k] = k === 'corroborar' ? 0 : numeroONull(out.ratios[k]);
+    out.fc[k] = numeroONull(out.fc[k]);
+  });
+  if (out.fc.corroborar === null && numeroPresente(out.fc.desayuno)) out.fc.corroborar = out.fc.desayuno;
+  out.metas.antes = numeroONull(out.metas.antes);
+  out.metas.correccion = numeroONull(out.metas.correccion);
+  out.toujeo = numeroONull(c.toujeo);
+  out.peso = numeroONull(c.peso);
+  out.factorGrasas = numeroONull(c.factorGrasas);
+  if (out.factorGrasas === null && esExistente && configTieneEsquema(out)) out.factorGrasas = 30;
+  out.telEmergencia = String(c.telEmergencia || '').trim();
+  out.contactoTelefono = String(c.contactoTelefono || c.telPapa || '').trim();
+  out.contactoNombre = String(c.contactoNombre || '').trim();
+  delete out.telPapa;
+  out.tema = c.tema || 'elite';
+  out.avatar = numeroONull(c.avatar) === null ? 0 : numeroONull(c.avatar);
+  out.aceptoAviso = !!c.aceptoAviso || !!esExistente;
+  out.setupCompleto = configTieneEsquema(out);
+  return out;
+}
+let config = configVacia();
 
 // ===== NUEVO: COMIDA CON GRASAS =====
 const RATIO_INPUT_IDS = { desayuno: 'cfg-r-desayuno', mam: 'cfg-r-mam', almuerzo: 'cfg-r-alm', mpm: 'cfg-r-mpm', cena: 'cfg-r-cena' };
 function obtenerFactorGrasas() {
   const el = document.getElementById('cfg-factor-grasas');
-  let v = el && el.value !== '' ? parseFloat(el.value) : parseFloat(config.factorGrasas);
-  if (!isFinite(v) || v < 0) v = 30;
-  return v;
+  if (el && el.value !== '') {
+    const n = parseFloat(String(el.value).replace(',', '.'));
+    if (isFinite(n) && n >= 0) return n;
+  }
+  const guardado = parseFloat(config.factorGrasas);
+  if (isFinite(guardado) && guardado >= 0) return guardado;
+  return 0;
 }
 function calcularCarbosConGrasas(carbosBase, conGrasas, pct) {
   const extra = conGrasas ? Math.round(carbosBase * pct) / 100 : 0;
@@ -745,77 +1057,179 @@ const svgUnicornio = `<svg viewBox="0 0 100 100" width="100%" height="100%" xmln
 const svgDragon = `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><polygon points="30,45 50,20 70,45" fill="#F05A4A"/><polygon points="10,60 25,35 40,60" fill="#F05A4A"/><polygon points="90,60 75,35 60,60" fill="#F05A4A"/><path d="M 10 95 A 40 40 0 0 1 90 95 Z" fill="#27AE60"/><circle cx="35" cy="70" r="5" fill="#F1C40F"/><circle cx="65" cy="70" r="5" fill="#F1C40F"/><circle cx="35" cy="70" r="2" fill="#2C3A40"/><circle cx="65" cy="70" r="2" fill="#2C3A40"/><rect x="42" y="85" width="4" height="4" fill="#2C3A40"/><rect x="54" y="85" width="4" height="4" fill="#2C3A40"/></svg>`;
 
 const avatares = [
-  { icon: svgOso, name: 'Oso Polar (Líder)', req: 0, desc: 'Líder desde el día 1.' },
-  { icon: svgZorro, name: 'Zorro Ártico', req: 3, desc: 'Requiere 3 días estables.' },
-  { icon: svgPinguino, name: 'Pingüino Emperador', req: 7, desc: 'Requiere 1 semana estable.' },
-  { icon: svgFoca, name: 'Foca Valiente', req: 10, desc: 'Requiere 10 días de excelencia.' },
-  { icon: svgBuho, name: 'Búho Nival', req: 14, desc: 'Requiere 2 semanas estables.' },
-  { icon: svgLobo, name: 'Lobo Alfa', req: 18, desc: 'Requiere 18 días de liderazgo.' },
-  { icon: svgTigre, name: 'Tigre Blanco', req: 21, desc: 'Requiere 3 semanas estables.' },
-  { icon: svgPanda, name: 'Panda Zen', req: 25, desc: 'Requiere 25 días estables.' },
-  { icon: svgUnicornio, name: 'Unicornio Místico', req: 28, desc: 'Requiere 4 semanas estables.' },
-  { icon: svgDragon, name: 'Dragón Legendario', req: 35, desc: 'Requiere 35 días absolutos.' }
+  { icon: svgOso, name: 'Oso Polar' },
+  { icon: svgZorro, name: 'Zorro Ártico' },
+  { icon: svgPinguino, name: 'Pingüino Emperador' },
+  { icon: svgFoca, name: 'Foca Valiente' },
+  { icon: svgBuho, name: 'Búho Nival' },
+  { icon: svgLobo, name: 'Lobo Alfa' },
+  { icon: svgTigre, name: 'Tigre Blanco' },
+  { icon: svgPanda, name: 'Panda Zen' },
+  { icon: svgUnicornio, name: 'Unicornio Místico' },
+  { icon: svgDragon, name: 'Dragón Legendario' }
 ];
+const UMBRALES_REGISTROS = [5, 15, 30, 60, 100, 150, 200, 300];
+const RACHA_FINAL = 7;
 
 const avataresBgColors = ['#197B79', '#E55938', '#73A5D4', '#7BA68D', '#2B3C46', '#1A7A78', '#EFBA34', '#799E7A', '#FA65ED', '#213B41'];
 
-function contarDiasEstables() {
-  const historial = JSON.parse(localStorage.getItem('historial_polar') || '[]'); 
-  const glucosasPorDia = {};
-  
-  historial.forEach(reg => { 
-      if (reg.iso && reg.glucosa) { 
-          if (!glucosasPorDia[reg.iso]) glucosasPorDia[reg.iso] = []; 
-          glucosasPorDia[reg.iso].push(parseFloat(reg.glucosa)); 
-      } 
+function rangoMetaUsuario() {
+  const antes = numeroONull(config.metas && config.metas.antes);
+  const correccion = numeroONull(config.metas && config.metas.correccion);
+  if (antes === null && correccion === null) return null;
+  const lo = Math.min(antes === null ? correccion : antes, correccion === null ? antes : correccion);
+  const hi = Math.max(antes === null ? correccion : antes, correccion === null ? antes : correccion);
+  return { lo: lo, hi: hi };
+}
+function glucosaEnMeta(valor) {
+  const g = parseFloat(valor);
+  const rango = rangoMetaUsuario();
+  if (!rango || !isFinite(g)) return false;
+  return g >= rango.lo && g <= rango.hi;
+}
+function diasEntreISO(a, b) {
+  const da = new Date(a + 'T00:00:00');
+  const db = new Date(b + 'T00:00:00');
+  return Math.round((db.getTime() - da.getTime()) / 86400000);
+}
+function metaDeAvatar(index) {
+  if (index <= 0) return { tipo: 'libre', n: 0 };
+  if (index === avatares.length - 1) return { tipo: 'racha', n: RACHA_FINAL };
+  const slot = index - 1;
+  const base = UMBRALES_REGISTROS[slot];
+  const n = base != null ? base : UMBRALES_REGISTROS[UMBRALES_REGISTROS.length - 1] + (slot - UMBRALES_REGISTROS.length + 1) * 50;
+  return { tipo: 'registros', n: n };
+}
+function progresoAvatares() {
+  const historial = leerHistorial();
+  let enMeta = 0;
+  const porDia = {};
+  historial.forEach((reg) => {
+    const g = parseFloat(reg.glucosa);
+    if (!isFinite(g)) return;
+    if (glucosaEnMeta(g)) enMeta += 1;
+    if (!reg.iso) return;
+    if (!porDia[reg.iso]) porDia[reg.iso] = [];
+    porDia[reg.iso].push(g);
   });
-  
-  let estables = 0;
-  for (let fecha in glucosasPorDia) {
-    let lecturas = glucosasPorDia[fecha].filter(g => !isNaN(g)); 
-    if (lecturas.length === 0) continue;
-    
-    let crisis = lecturas.find(g => g < 65 || g > 250);
-    if (!crisis) { 
-        estables++; 
-    }
+  const diasOk = Object.keys(porDia).filter((dia) => {
+    const vals = porDia[dia];
+    const promedio = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return glucosaEnMeta(promedio);
+  }).sort();
+  let mejor = 0;
+  let seguida = 0;
+  let previo = null;
+  diasOk.forEach((dia) => {
+    if (previo && diasEntreISO(previo, dia) === 1) seguida += 1;
+    else seguida = 1;
+    previo = dia;
+    if (seguida > mejor) mejor = seguida;
+  });
+  const desbloqueados = [];
+  avatares.forEach((av, index) => {
+    const meta = metaDeAvatar(index);
+    if (meta.tipo === 'libre') desbloqueados.push(index);
+    else if (meta.tipo === 'registros' && enMeta >= meta.n) desbloqueados.push(index);
+    else if (meta.tipo === 'racha' && mejor >= meta.n) desbloqueados.push(index);
+  });
+  return { enMeta: enMeta, racha: mejor, desbloqueados: desbloqueados };
+}
+function revisarAvatares(avisar) {
+  const prog = progresoAvatares();
+  const clave = claveUsuario('polar_avatares_vistos');
+  let previos = null;
+  if (clave && localStorage.getItem(clave) !== null) {
+    try { previos = JSON.parse(localStorage.getItem(clave)); } catch (e) { previos = []; }
   }
-  return estables;
+  if (clave) localStorage.setItem(clave, JSON.stringify(prog.desbloqueados));
+  if (avisar && Array.isArray(previos)) {
+    const nuevos = prog.desbloqueados.filter((i) => i > 0 && previos.indexOf(i) === -1);
+    if (nuevos.length) celebrarAvatares(nuevos);
+  }
+  if (prog.desbloqueados.indexOf(config.avatar) === -1) {
+    config.avatar = 0;
+    guardarConfigLocal();
+    if (typeof cargarAvatar === 'function') cargarAvatar();
+  }
+  return prog;
+}
+let toastAvatarTimer;
+function celebrarAvatares(indices) {
+  const nombres = indices.map((i) => avatares[i] ? avatares[i].name : '').filter(Boolean);
+  if (!nombres.length) return;
+  const texto = nombres.length === 1
+    ? '¡Nuevo compañero! Ya puedes usar ' + nombres[0] + '.'
+    : '¡Qué bien! Desbloqueaste ' + nombres.join(', ') + '.';
+  const el = document.getElementById('toast-avatar');
+  if (!el) return;
+  el.textContent = texto;
+  el.classList.add('show');
+  clearTimeout(toastAvatarTimer);
+  toastAvatarTimer = setTimeout(() => el.classList.remove('show'), 4200);
+}
+function textoProgresoAvatar(index, prog) {
+  const meta = metaDeAvatar(index);
+  if (meta.tipo === 'libre') return 'Contigo desde el inicio.';
+  if (meta.tipo === 'racha') return Math.min(prog.racha, meta.n) + '/' + meta.n + ' días en meta';
+  return Math.min(prog.enMeta, meta.n) + '/' + meta.n + ' en meta';
+}
+function textoCandadoAvatar(index) {
+  const meta = metaDeAvatar(index);
+  if (meta.tipo === 'racha') return 'Se desbloquea con ' + meta.n + ' días seguidos en meta';
+  return 'Se desbloquea con ' + meta.n + ' registros en meta';
 }
 
 function renderAvatarPanel() {
-  const diasEstables = contarDiasEstables(); 
+  const prog = progresoAvatares();
   const gridContainer = document.getElementById('avatars-grid-container');
-  
+  const resumen = document.getElementById('avatar-resumen');
+  if (resumen) {
+    resumen.textContent = prog.enMeta === 0
+      ? 'Tus registros en meta irán sumando compañeros.'
+      : 'Llevas ' + prog.enMeta + ' registros en meta. Cada uno cuenta.';
+  }
+  if (!gridContainer) return;
+
+  const candado = '<span class="avatar-lock" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="5" y="11" width="14" height="9" rx="2" fill="#2C3A40"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#2C3A40" stroke-width="2"/></svg></span>';
   let gridHTML = '';
   avatares.forEach((av, index) => {
-    const desbloqueado = diasEstables >= av.req;
-    const isActive = (config.avatar === index);
-    const statusClass = desbloqueado ? '' : 'locked';
-    const activeClass = isActive ? 'active' : '';
+    const desbloqueado = prog.desbloqueados.indexOf(index) !== -1;
+    const isActive = config.avatar === index;
     const bg = avataresBgColors[index] || '#2C3A40';
-    const diasTexto = index === 0 ? 'Nivel Base' : `${av.req} Días`;
     const nombreCorto = av.name.replace(' Emperador', '').replace(' Legendario', ' Leyenda');
-
+    const detalle = desbloqueado ? textoProgresoAvatar(index, prog) : textoCandadoAvatar(index);
+    const avance = desbloqueado ? '' : '<p class="avatar-avance">' + textoProgresoAvatar(index, prog) + '</p>';
     gridHTML += `
-      <div class="avatar-card ${statusClass} ${activeClass}" onclick="${desbloqueado ? `seleccionarAvatarDirecto(${index})` : 'null'}">
+      <div class="avatar-card ${desbloqueado ? '' : 'locked'} ${isActive ? 'active' : ''}" ${desbloqueado ? 'onclick="seleccionarAvatarDirecto(' + index + ')"' : ''}>
         <div class="avatar-bg" style="background-color: ${bg};">
-          <span style="display: block; width: 100%; height: 100%;">${av.icon}</span>
+          <span class="avatar-dibujo">${av.icon}</span>
+          ${desbloqueado ? '' : candado}
         </div>
         <h4>${nombreCorto}</h4>
-        <p>${diasTexto}</p>
+        <p class="avatar-hint">${detalle}</p>
+        ${avance}
       </div>
     `;
   });
   gridContainer.innerHTML = gridHTML;
 }
 
-function seleccionarAvatarDirecto(index) { 
-  config.avatar = index; 
-  localStorage.setItem('polar_config', JSON.stringify(config)); 
-  cargarAvatar(); 
-  renderAvatarPanel(); 
-  alert("¡Poder equipado con excelencia!"); 
+function seleccionarAvatarDirecto(index) {
+  const prog = progresoAvatares();
+  if (prog.desbloqueados.indexOf(index) === -1) return;
+  config.avatar = index;
+  guardarConfigLocal();
+  cargarAvatar();
+  renderAvatarPanel();
+  celebrarAvatares([]);
+  const el = document.getElementById('toast-avatar');
+  if (el) {
+    el.textContent = avatares[index].name + ' te acompaña ahora.';
+    el.classList.add('show');
+    clearTimeout(toastAvatarTimer);
+    toastAvatarTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
 }
 
 function cargarAvatar() { 
@@ -828,143 +1242,293 @@ function obtenerFechaLocalISO() {
   return new Date(ahora.getTime() - tzOffset).toISOString().split('T')[0]; 
 }
 
+const FC_INPUT_IDS = {
+  desayuno: 'cfg-fc-desayuno',
+  mam: 'cfg-fc-mam',
+  almuerzo: 'cfg-fc-alm',
+  mpm: 'cfg-fc-mpm',
+  cena: 'cfg-fc-cena',
+  corroborar: 'cfg-fc-corroborar'
+};
 function obtenerFcComida(comidaKey) {
-  const idMap = {
-    'desayuno': 'cfg-fc-desayuno',
-    'mam': 'cfg-fc-mam',
-    'almuerzo': 'cfg-fc-alm',
-    'mpm': 'cfg-fc-mpm',
-    'cena': 'cfg-fc-cena',
-    'corroborar': 'cfg-fc-corroborar'
-  };
-
-  const inputEl = document.getElementById(idMap[comidaKey]);
+  const inputEl = document.getElementById(FC_INPUT_IDS[comidaKey]);
   if (inputEl && inputEl.value !== '') {
-    return parseFloat(inputEl.value) || 30;
+    const n = parseFloat(String(inputEl.value).replace(',', '.'));
+    if (Number.isFinite(n)) return n;
   }
-
-  if (config.fc && typeof config.fc === 'object') {
-    return parseFloat(config.fc[comidaKey]) || parseFloat(config.fc.desayuno) || 30;
+  if (config.fc && typeof config.fc === 'object' && config.fc[comidaKey] != null && config.fc[comidaKey] !== '') {
+    const n = parseFloat(config.fc[comidaKey]);
+    if (Number.isFinite(n)) return n;
   }
-
-  if (typeof config.fc === 'number') {
-    return config.fc;
+  if (typeof config.fc === 'number' && Number.isFinite(config.fc)) return config.fc;
+  return NaN;
+}
+function leerRatioComida(comidaKey) {
+  if (comidaKey === 'corroborar') return 0;
+  const inputRatio = document.getElementById(RATIO_INPUT_IDS[comidaKey] || ('cfg-r-' + comidaKey));
+  if (inputRatio && inputRatio.value !== '') {
+    const n = parseFloat(String(inputRatio.value).replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
   }
-
-  return 30;
+  return numeroONull(config.ratios && config.ratios[comidaKey]);
+}
+function leerFactorComida(comidaKey) {
+  const n = obtenerFcComida(comidaKey);
+  return Number.isFinite(n) ? n : null;
+}
+function motivoBloqueo(comidaKey) {
+  if (!config.setupCompleto) return 'setup';
+  const ratio = leerRatioComida(comidaKey);
+  const fc = leerFactorComida(comidaKey);
+  if (comidaKey !== 'corroborar' && ratio === null) return 'ratio';
+  if (fc === null || fc <= 0) return 'factor';
+  return '';
+}
+function textoBloqueo(comidaKey, motivo) {
+  const nombre = NOMBRES_COMIDA[comidaKey] || 'esta comida';
+  if (motivo === 'setup') return 'Antes de calcular, completa tu configuración.';
+  if (motivo === 'ratio') return 'Falta el ratio de ' + nombre + '.';
+  if (motivo === 'factor') return 'Falta el factor de sensibilidad de ' + nombre + '.';
+  return 'Falta un dato de ' + nombre + '.';
+}
+function actualizarAvisoCalculo() {
+  const aviso = document.getElementById('aviso-config-faltante');
+  if (!aviso) return;
+  const comida = document.getElementById('comida');
+  const key = comida ? comida.value : 'desayuno';
+  const falta = motivoBloqueo(key);
+  if (!falta) { aviso.style.display = 'none'; aviso.innerHTML = ''; return; }
+  aviso.style.display = 'block';
+  aviso.innerHTML = textoBloqueo(key, falta) + ' <button type="button" class="btn-link" onclick="irAConfiguracion()">Ir a Configuración</button>';
+}
+function mostrarBloqueoCalculo(comidaKey, motivo) {
+  const resDiv = document.getElementById('resultado');
+  if (resDiv) { resDiv.style.display = 'none'; resDiv.innerHTML = ''; }
+  const aviso = document.getElementById('aviso-config-faltante');
+  if (!aviso) return;
+  aviso.style.display = 'block';
+  aviso.innerHTML = '<strong>Falta configuración.</strong> ' + textoBloqueo(comidaKey, motivo)
+    + ' <button type="button" class="btn-link" onclick="irAConfiguracion()">Ir a Configuración</button>';
+}
+function irAConfiguracion() {
+  const res = document.getElementById('resultado');
+  if (res) res.style.display = 'none';
+  if (!config.setupCompleto) switchTab('setup');
+  else switchTab('config');
 }
 
-window.addEventListener('DOMContentLoaded', async () => {
-  window.__polarIniciada = true;
-  setTimeout(() => { 
-      document.getElementById('splash-screen').classList.add('splash-oculto'); 
-      if(localStorage.getItem('polar_session_activa') === 'true') {
-          const navBottom = document.querySelector('.bottom-nav');
-          if(navBottom) navBottom.classList.add('show');
-      }
-  }, 1500);
-
-  verificarSesion();
-  
-  if (localStorage.getItem('polar_session_activa') === 'true') {
-    let session = null;
-    if (polarDb) {
-      try { ({ data: { session } } = await Promise.race([polarDb.auth.getSession(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout getSession')), 6000))])); } catch (e) { console.warn('Sin conexión con Supabase', e); session = 'offline'; }
-    } else { session = 'offline'; }
-    
-    if (session === 'offline') {
-        // Sin internet / librería no cargó: se sigue usando con datos locales
-    } else if (session) {
-        await sincronizarDatosNube();
-        activarSuscripcionTiempoReal();
+function valorInput(v) {
+  const n = numeroONull(v);
+  return n === null ? '' : String(n);
+}
+function ponerValor(id, valor) {
+  const el = document.getElementById(id);
+  if (el) el.value = valor == null ? '' : valor;
+}
+function actualizarContactosUI() {
+  const amb = document.getElementById('btn-llamar-emergencia');
+  const cont = document.getElementById('btn-llamar-contacto');
+  const telA = String(config.telEmergencia || '').trim();
+  const telC = String(config.contactoTelefono || '').trim();
+  const nom = String(config.contactoNombre || '').trim();
+  if (amb) {
+    if (telA) { amb.href = 'tel:' + telA; amb.style.display = ''; }
+    else { amb.style.display = 'none'; amb.removeAttribute('href'); }
+  }
+  if (cont) {
+    if (nom || telC) {
+      cont.style.display = '';
+      if (telC) cont.href = 'tel:' + telC;
+      else cont.removeAttribute('href');
+      cont.textContent = nom ? ('Llamar a ' + nom) : 'Llamar al contacto';
     } else {
-        cerrarSesion();
+      cont.style.display = 'none';
     }
   }
-
-  cargarNombreUsuario();
-
-  const configGuardada = localStorage.getItem('polar_config');
-  if (configGuardada) { 
-      config = JSON.parse(configGuardada); 
-      if (typeof config.ratios === 'undefined') config.ratios = { desayuno: 4, mam: 0, almuerzo: 5, mpm: 5, cena: 14, corroborar: 0 };
-      if (typeof config.ratios.corroborar === 'undefined') config.ratios.corroborar = 0; 
-      if (typeof config.peso === 'undefined') config.peso = 50; 
-      if (typeof config.avatar === 'undefined') config.avatar = 0;
-      if (typeof config.tema === 'undefined') config.tema = "elite"; 
-      if (typeof config.metas === 'undefined') config.metas = { antes: 100, correccion: 150 };
-
-      if (typeof config.fc === 'number' || typeof config.fc === 'string') {
-        const valFc = parseFloat(config.fc) || 30;
-        config.fc = { desayuno: valFc, mam: valFc, almuerzo: valFc, mpm: valFc, cena: valFc, corroborar: valFc };
-      } else if (!config.fc || typeof config.fc !== 'object') {
-        config.fc = { desayuno: 30, mam: 30, almuerzo: 30, mpm: 30, cena: 30, corroborar: 30 };
-      } else {
-        if (typeof config.fc.desayuno === 'undefined') config.fc.desayuno = 30;
-        if (typeof config.fc.mam === 'undefined') config.fc.mam = 30;
-        if (typeof config.fc.almuerzo === 'undefined') config.fc.almuerzo = 30;
-        if (typeof config.fc.mpm === 'undefined') config.fc.mpm = 30;
-        if (typeof config.fc.cena === 'undefined') config.fc.cena = 30;
-        if (typeof config.fc.corroborar === 'undefined') config.fc.corroborar = 30;
-      }
-  }
-
-  const estadoRedondeoGuardado = localStorage.getItem('polar_redondeo_activo');
-  if (estadoRedondeoGuardado !== null) {
-    usoRedondeoElite = (estadoRedondeoGuardado === 'true');
-  }
-  
-  config.tema = temaVisible(config.tema);
-  document.getElementById('cfg-tema').value = config.tema; 
-  aplicarTemaReal(config.tema);
-
-  if (document.getElementById('cfg-peso')) document.getElementById('cfg-peso').value = config.peso;
-  document.getElementById('cfg-toujeo').value = config.toujeo; 
-
-  if (document.getElementById('cfg-fc-desayuno')) document.getElementById('cfg-fc-desayuno').value = config.fc.desayuno;
-  if (document.getElementById('cfg-fc-mam')) document.getElementById('cfg-fc-mam').value = config.fc.mam;
-  if (document.getElementById('cfg-fc-alm')) document.getElementById('cfg-fc-alm').value = config.fc.almuerzo;
-  if (document.getElementById('cfg-fc-mpm')) document.getElementById('cfg-fc-mpm').value = config.fc.mpm;
-  if (document.getElementById('cfg-fc-cena')) document.getElementById('cfg-fc-cena').value = config.fc.cena;
-  if (document.getElementById('cfg-fc-corroborar')) document.getElementById('cfg-fc-corroborar').value = config.fc.corroborar;
-
-  document.getElementById('cfg-tel-emergencia').value = config.telEmergencia; 
-  document.getElementById('cfg-tel-papa').value = config.telPapa;
-  
-  document.getElementById('cfg-meta-antes').value = config.metas.antes;
-  document.getElementById('cfg-meta-cor').value = config.metas.correccion;
-  
-  if (document.getElementById('cfg-r-desayuno')) document.getElementById('cfg-r-desayuno').value = config.ratios.desayuno; 
-  if (document.getElementById('cfg-r-mam')) document.getElementById('cfg-r-mam').value = config.ratios.mam; 
-  if (document.getElementById('cfg-r-alm')) document.getElementById('cfg-r-alm').value = config.ratios.almuerzo; 
-  if (document.getElementById('cfg-r-mpm')) document.getElementById('cfg-r-mpm').value = config.ratios.mpm; 
-  if (document.getElementById('cfg-r-cena')) document.getElementById('cfg-r-cena').value = config.ratios.cena;
-  if (typeof config.factorGrasas === 'undefined') config.factorGrasas = 30;
-  if (document.getElementById('cfg-factor-grasas')) document.getElementById('cfg-factor-grasas').value = config.factorGrasas;
+  const aviso = document.getElementById('txt-aviso-emergencia');
+  if (aviso) aviso.textContent = nom ? ('Llamar a ' + nom + '.') : 'Llamar a emergencias.';
+}
+function pintarSetupDesdeConfig() {
+  ponerValor('setup-r-desayuno', valorInput(config.ratios.desayuno));
+  ponerValor('setup-r-colacion', valorInput(config.ratios.mpm));
+  ponerValor('setup-r-almuerzo', valorInput(config.ratios.almuerzo));
+  ponerValor('setup-r-once', valorInput(config.ratios.mam));
+  ponerValor('setup-r-cena', valorInput(config.ratios.cena));
+  const fc = numeroONull(config.fc && config.fc.desayuno);
+  ponerValor('setup-fc', valorInput(fc));
+  ponerValor('setup-meta-antes', valorInput(config.metas.antes));
+  ponerValor('setup-meta-cor', valorInput(config.metas.correccion));
+  ponerValor('setup-toujeo', valorInput(config.toujeo));
+  ponerValor('setup-contacto-nombre', config.contactoNombre || '');
+  ponerValor('setup-contacto-tel', config.contactoTelefono || '');
+  const chk = document.getElementById('setup-acepto');
+  if (chk) chk.checked = !!config.aceptoAviso;
+}
+function pintarTodo() {
+  const estadoRedondeoGuardado = leerTextoUsuario('polar_redondeo_activo', null);
+  if (estadoRedondeoGuardado !== null) usoRedondeoElite = (estadoRedondeoGuardado === 'true');
+  ponerValor('cfg-tema', config.tema || 'elite');
+  aplicarTemaReal(config.tema || 'elite');
+  ponerValor('cfg-peso', valorInput(config.peso));
+  ponerValor('cfg-toujeo', valorInput(config.toujeo));
+  ponerValor('cfg-fc-desayuno', valorInput(config.fc.desayuno));
+  ponerValor('cfg-fc-mam', valorInput(config.fc.mam));
+  ponerValor('cfg-fc-alm', valorInput(config.fc.almuerzo));
+  ponerValor('cfg-fc-mpm', valorInput(config.fc.mpm));
+  ponerValor('cfg-fc-cena', valorInput(config.fc.cena));
+  ponerValor('cfg-fc-corroborar', valorInput(config.fc.corroborar));
+  ponerValor('cfg-tel-emergencia', config.telEmergencia || '');
+  ponerValor('cfg-contacto-nombre', config.contactoNombre || '');
+  ponerValor('cfg-tel-contacto', config.contactoTelefono || '');
+  ponerValor('cfg-meta-antes', valorInput(config.metas.antes));
+  ponerValor('cfg-meta-cor', valorInput(config.metas.correccion));
+  ponerValor('cfg-r-desayuno', valorInput(config.ratios.desayuno));
+  ponerValor('cfg-r-mam', valorInput(config.ratios.mam));
+  ponerValor('cfg-r-alm', valorInput(config.ratios.almuerzo));
+  ponerValor('cfg-r-mpm', valorInput(config.ratios.mpm));
+  ponerValor('cfg-r-cena', valorInput(config.ratios.cena));
+  ponerValor('cfg-factor-grasas', valorInput(config.factorGrasas));
+  pintarSetupDesdeConfig();
   actualizarDesgloseCarbos();
-  
-  actualizarDropdownMetas(); 
+  actualizarDropdownMetas();
   actualizarRecordatoriosUI();
-  actualizarTextosComida(); 
-  renderCitas(); 
-  renderGraficoPicos(); 
-  verificarCitasProximas(); 
-  cargarAvatar(); 
+  actualizarTextosComida();
+  actualizarContactosUI();
+  renderCitas();
+  renderGraficoPicos();
+  verificarCitasProximas();
+  cargarAvatar();
   actualizarBotonRedondeoUI();
-  autoSeleccionarComida(); 
-
-  document.getElementById('btn-llamar-emergencia').href = "tel:" + config.telEmergencia;
-  document.getElementById('btn-llamar-papa').href = "tel:" + config.telPapa;
-
-  const btnInstall = document.getElementById('btn-install'); 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; 
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  if (!isStandalone && isIOS) { 
-    btnInstall.style.display = 'flex'; 
-  }
-  
-  switchTab('home');
+  autoSeleccionarComida();
+  cargarNombreUsuario();
   actualizarRadar();
+  actualizarAvisoCalculo();
+  if (typeof revisarAvatares === 'function') revisarAvatares(false);
+}
+function adoptarConfigDeUsuario(user) {
+  const meta = (user && user.user_metadata) || {};
+  const uid = user.id;
+  const tieneElite = !!(meta.config_elite && typeof meta.config_elite === 'object');
+  const claveCfg = 'polar_config_' + uid;
+  const pendiente = localStorage.getItem('polar_config_pendiente_' + uid) === '1';
+  const localCfg = localStorage.getItem(claveCfg);
+  if (meta.nombre_lider) localStorage.setItem('polar_nombre_lider_' + uid, meta.nombre_lider);
+  if (pendiente && localCfg) {
+    try { config = normalizarConfig(JSON.parse(localCfg), false); } catch (e) { config = configVacia(); }
+  } else if (tieneElite) {
+    config = normalizarConfig(meta.config_elite, true);
+    localStorage.setItem(claveCfg, JSON.stringify(config));
+  } else if (localCfg) {
+    try { config = normalizarConfig(JSON.parse(localCfg), false); } catch (e) { config = configVacia(); }
+  } else {
+    const globalCfg = localStorage.getItem('polar_config');
+    if (globalCfg) {
+      try { config = normalizarConfig(JSON.parse(globalCfg), true); } catch (e) { config = configVacia(); }
+      localStorage.setItem(claveCfg, JSON.stringify(config));
+      localStorage.removeItem('polar_config');
+    } else {
+      config = configVacia();
+    }
+  }
+  migrarGlobalSiFalta('historial_polar', uid);
+  migrarGlobalSiFalta('citas_polar', uid);
+  migrarGlobalSiFalta('polar_cola_sync', uid);
+  migrarGlobalSiFalta('polar_redondeo_activo', uid);
+}
+async function activarSesion(user, opts) {
+  opts = opts || {};
+  if (!user || !user.id) { verificarSesion(); return; }
+  localStorage.setItem('polar_session_activa', 'true');
+  localStorage.setItem('polar_user_id', user.id);
+  if (user.email) localStorage.setItem('polar_rol', user.email);
+  adoptarConfigDeUsuario(user);
+  verificarSesion();
+  pintarTodo();
+  if (!opts.offline && polarDb) {
+    try { await sincronizarDatosNube(); } catch (e) { console.error(e); }
+    try { activarSuscripcionTiempoReal(); } catch (e) { console.error(e); }
+    try { await revisarRegistrosAntiguos(); } catch (e) { console.error(e); }
+    if (localStorage.getItem('polar_config_pendiente_' + user.id) === '1') {
+      const ok = await sincronizarConfigNube();
+      mostrarEstadoConfig(ok ? '' : 'No se pudo subir tu configuración. Reintenta.', !ok);
+    }
+  }
+  if (!config.setupCompleto) switchTab('setup');
+  else switchTab('home');
+}
+async function obtenerSesionInicial() {
+  if (!polarDb || !polarDb.auth) return { session: null, offline: true };
+  try {
+    const res = await Promise.race([
+      polarDb.auth.getSession(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout getSession')), 6000))
+    ]);
+    return { session: res && res.data ? res.data.session : null, offline: false };
+  } catch (e) {
+    console.warn('Sin conexión', e);
+    return { session: null, offline: true };
+  }
+}
+window.addEventListener('DOMContentLoaded', async () => {
+  window.__polarIniciada = true;
+  setTimeout(() => {
+    const splash = document.getElementById('splash-screen');
+    if (splash) splash.classList.add('splash-oculto');
+  }, 1500);
+
+  const sesionLocal = localStorage.getItem('polar_session_activa') === 'true';
+  const { session, offline } = await obtenerSesionInicial();
+
+  if (parametrosAuthIniciales.error) mostrarErrorLogin(traducirErrorUrl(parametrosAuthIniciales.error));
+
+  if (recuperacionPendiente && (session || sesionLocal || parametrosAuthIniciales.type === 'recovery')) {
+    if (!(session || sesionLocal) && parametrosAuthIniciales.type !== 'recovery') {
+      recuperacionPendiente = false;
+      localStorage.removeItem('polar_recuperacion_pendiente');
+    } else if (!session && !sesionLocal) {
+      recuperacionPendiente = false;
+      localStorage.removeItem('polar_recuperacion_pendiente');
+      mostrarAuth('entrar');
+      mostrarErrorLogin('El enlace venció o no es válido. Pide otro correo.');
+      pintarTodo();
+      verificarSesion();
+      limpiarUrlAuth();
+    } else {
+      mostrarRecuperacion();
+      limpiarUrlAuth();
+    }
+  } else if (session && session.user) {
+    await activarSesion(session.user);
+    limpiarUrlAuth();
+  } else if (sesionLocal && offline) {
+    await activarSesion({
+      id: localStorage.getItem('polar_user_id'),
+      email: localStorage.getItem('polar_rol'),
+      user_metadata: {}
+    }, { offline: true });
+  } else if (sesionLocal) {
+    await cerrarSesion();
+    limpiarUrlAuth();
+  } else {
+    if (recuperacionPendiente && parametrosAuthIniciales.type !== 'recovery') {
+      recuperacionPendiente = false;
+      localStorage.removeItem('polar_recuperacion_pendiente');
+    }
+    config = configVacia();
+    pintarTodo();
+    verificarSesion();
+    limpiarUrlAuth();
+  }
+
+  const btnInstall = document.getElementById('btn-install');
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (btnInstall && !isStandalone && isIOS) btnInstall.style.display = 'flex';
+});
+window.addEventListener('online', function () {
+  if (localStorage.getItem('polar_config_pendiente_' + (localStorage.getItem('polar_user_id') || '')) === '1') {
+    reintentarGuardarConfig();
+  }
 });
 
 window.addEventListener('beforeinstallprompt', (e) => { 
@@ -1008,11 +1572,11 @@ function agregarCita() {
   const e = document.getElementById('cita-especialista').value.trim();
   if (!f || !h || !e) { alert("Llena todo para agendar con excelencia."); return; }
   
-  let citas = JSON.parse(localStorage.getItem('citas_polar') || '[]'); 
+  let citas = leerCitas(); 
   citas.push({ id: Date.now(), fecha: f, hora: h, specialist: e }); 
   citas.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
   
-  localStorage.setItem('citas_polar', JSON.stringify(citas)); 
+  guardarCitas(citas); 
   document.getElementById('cita-fecha').value = ''; 
   document.getElementById('cita-hora').value = ''; 
   document.getElementById('cita-especialista').value = ''; 
@@ -1022,10 +1586,10 @@ function agregarCita() {
 }
 
 function borrarCita(id) { 
-    let citas = JSON.parse(localStorage.getItem('citas_polar') || '[]'); 
+    let citas = leerCitas(); 
     const cv = citas; 
     citas = citas.filter(c => c.id !== id); 
-    localStorage.setItem('citas_polar', JSON.stringify(citas)); 
+    guardarCitas(citas); 
     renderCitas(); 
     activarDeshacer('citas', cv);
 }
@@ -1041,7 +1605,7 @@ function agregarAlCalendario(especialista, fecha, hora) {
 
 function renderCitas() {
   const lista = document.getElementById('lista-citas'); 
-  const citas = JSON.parse(localStorage.getItem('citas_polar') || '[]');
+  const citas = leerCitas();
   if (citas.length === 0) { 
     lista.innerHTML = '<p style="text-align: center; color: var(--text-primary); font-weight: 700; font-size: 14px;">No hay citas pendientes.</p>'; 
     return; 
@@ -1062,14 +1626,14 @@ function renderCitas() {
 }
 
 function verificarCitasProximas() {
-  const citas = JSON.parse(localStorage.getItem('citas_polar') || '[]');
+  const citas = leerCitas();
   if (citas.length === 0) return;
   
   const isoHoy = obtenerFechaLocalISO();
   
   citas.forEach(cita => {
     if (cita.fecha === isoHoy) {
-      const keyNotif = `notif_cita_hoy_${cita.fecha}_${cita.hora}`;
+      const keyNotif = 'notif_cita_' + (localStorage.getItem('polar_user_id') || 'local') + '_' + cita.fecha + '_' + cita.hora;
       if (!localStorage.getItem(keyNotif)) {
         if (Notification.permission !== "granted") {
           Notification.requestPermission();
@@ -1077,8 +1641,8 @@ function verificarCitasProximas() {
 
         if ("Notification" in window && Notification.permission === "granted") {
           navigator.serviceWorker.ready.then(registration => {
-            registration.showNotification("¡Atención líder, cita hoy!", {
-              body: `Hoy tienes cita con ${cita.specialist || cita.especialista} a las ${cita.hora}. ¡Prepárate con excelencia!`,
+            registration.showNotification('Cita hoy', {
+              body: `Hoy tienes cita con ${cita.specialist || cita.especialista} a las ${cita.hora}.`,
               icon: "polar-logo.png",
               vibrate: [200, 100, 200, 100, 200]
             });
@@ -1092,11 +1656,11 @@ function verificarCitasProximas() {
 
 function actualizarRecordatoriosUI() { 
     const txtToujeo = document.getElementById('txt-toujeo');
-    if (txtToujeo) { txtToujeo.innerText = config.toujeo; }
+    if (txtToujeo) txtToujeo.innerText = numeroONull(config.toujeo) === null ? '—' : String(config.toujeo);
 }
 
 function generarPDFElite() {
-    const historial = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+    const historial = leerHistorial();
     
     const opt = {
       margin:       15,
@@ -1117,9 +1681,9 @@ function generarPDFElite() {
     html += `<div style="background: #F0F6F7; padding: 16px; border-radius: 12px; margin-bottom: 25px; border-left: 6px solid #088387;">
       <h3 style="color: #088387; margin-bottom: 12px; font-size: 18px; margin-top:0; font-weight: 900;">Esquema Médico Actual</h3>
       <ul style="font-size: 14px; line-height: 1.6; list-style: none; padding: 0; margin: 0; font-weight: 700;">
-        <li><strong>Basal (Toujeo):</strong> ${config.toujeo} U</li>
-        <li><strong>Factores de Corrección:</strong> Desayuno: ${config.fc.desayuno} | Colación: ${config.fc.mpm} | Almuerzo: ${config.fc.almuerzo} | Once: ${config.fc.mam} | Cena: ${config.fc.cena} | Rev: ${config.fc.corroborar}</li>
-        <li><strong>Ratios:</strong> Desayuno R${config.ratios.desayuno} | Colación R${config.ratios.mpm} | Almuerzo R${config.ratios.almuerzo} | Once R${config.ratios.mam} | Cena R${config.ratios.cena}</li>
+        <li><strong>Basal (Toujeo):</strong> ${numeroONull(config.toujeo) === null ? '—' : config.toujeo} U</li>
+        <li><strong>Factor de sensibilidad:</strong> Des: ${config.fc.desayuno ?? '—'} | Colación: ${config.fc.mpm ?? '—'} | Alm: ${config.fc.almuerzo ?? '—'} | Once: ${config.fc.mam ?? '—'} | Cena: ${config.fc.cena ?? '—'} | Rev: ${config.fc.corroborar ?? '—'}</li>
+        <li><strong>Ratios:</strong> Desayuno R${config.ratios.desayuno ?? '—'} | Colación R${config.ratios.mpm ?? '—'} | Almuerzo R${config.ratios.almuerzo ?? '—'} | Once R${config.ratios.mam ?? '—'} | Cena R${config.ratios.cena ?? '—'}</li>
       </ul>
     </div>`;
 
@@ -1165,61 +1729,149 @@ function generarPDFElite() {
     html2pdf().set(opt).from(divPDF).save();
 }
 
-async function guardarConfig() {
-  const pesoEl = document.getElementById('cfg-peso');
-  if (pesoEl) config.peso = parseFloat(pesoEl.value) || config.peso || 50;
-  config.toujeo = parseFloat(document.getElementById('cfg-toujeo').value) || 0; 
-  config.telEmergencia = document.getElementById('cfg-tel-emergencia').value || "131"; 
-  config.telPapa = document.getElementById('cfg-tel-papa').value || "973808283";
-  
-  if (!config.fc || typeof config.fc !== 'object') {
-    config.fc = {};
+function mostrarEstadoConfig(msg, esError) {
+  const el = document.getElementById('config-sync-msg');
+  const btn = document.getElementById('btn-reintentar-config');
+  if (el) {
+    el.style.display = msg ? 'block' : 'none';
+    el.textContent = msg || '';
+    el.style.background = esError ? 'rgba(255,59,48,0.1)' : 'rgba(8,131,135,0.12)';
+    el.style.color = esError ? '#C62828' : '#086466';
   }
-  if (document.getElementById('cfg-fc-desayuno')) config.fc.desayuno = parseFloat(document.getElementById('cfg-fc-desayuno').value) || 30;
-  if (document.getElementById('cfg-fc-mam')) config.fc.mam = parseFloat(document.getElementById('cfg-fc-mam').value) || 30;
-  if (document.getElementById('cfg-fc-alm')) config.fc.almuerzo = parseFloat(document.getElementById('cfg-fc-alm').value) || 30;
-  if (document.getElementById('cfg-fc-mpm')) config.fc.mpm = parseFloat(document.getElementById('cfg-fc-mpm').value) || 30;
-  if (document.getElementById('cfg-fc-cena')) config.fc.cena = parseFloat(document.getElementById('cfg-fc-cena').value) || 30;
-  if (document.getElementById('cfg-fc-corroborar')) config.fc.corroborar = parseFloat(document.getElementById('cfg-fc-corroborar').value) || 30;
-
-  let valAntes = document.getElementById('cfg-meta-antes').value;
-  let valCor = document.getElementById('cfg-meta-cor').value;
-
-  config.metas.antes = valAntes ? parseFloat(valAntes) : 100;
-  config.metas.correccion = valCor ? parseFloat(valCor) : 150;
-
-  document.getElementById('cfg-meta-antes').value = config.metas.antes;
-  document.getElementById('cfg-meta-cor').value = config.metas.correccion;
-  
-  if(document.getElementById('cfg-r-desayuno')) config.ratios.desayuno = parseFloat(document.getElementById('cfg-r-desayuno').value) || 0;
-  if(document.getElementById('cfg-r-mam')) config.ratios.mam = parseFloat(document.getElementById('cfg-r-mam').value) || 0;
-  if(document.getElementById('cfg-r-alm')) config.ratios.almuerzo = parseFloat(document.getElementById('cfg-r-alm').value) || 0;
-  if(document.getElementById('cfg-r-mpm')) config.ratios.mpm = parseFloat(document.getElementById('cfg-r-mpm').value) || 0;
-  if(document.getElementById('cfg-r-cena')) config.ratios.cena = parseFloat(document.getElementById('cfg-r-cena').value) || 0;
-  
-  const fg = parseFloat((document.getElementById('cfg-factor-grasas') || {}).value);
-  config.factorGrasas = (isFinite(fg) && fg >= 0) ? fg : 30;
-  localStorage.setItem('polar_config', JSON.stringify(config));
-  actualizarDesgloseCarbos();
-  if (polarDb) polarDb.auth.updateUser({ data: { config_elite: config } });
-  
-  actualizarRecordatoriosUI();
-  actualizarDropdownMetas();
-  actualizarTextosComida(); 
-  
-  document.getElementById('btn-llamar-emergencia').href = "tel:" + config.telEmergencia;
-  document.getElementById('btn-llamar-papa').href = "tel:" + config.telPapa;
-
-  switchTab('home'); 
-  alert("Metas, factores de corrección y control guardados con éxito.");
+  if (btn) btn.style.display = esError ? 'block' : 'none';
+}
+async function sincronizarConfigNube() {
+  const uid = localStorage.getItem('polar_user_id');
+  if (!uid) return false;
+  guardarConfigLocal();
+  if (!polarDb || !polarDb.auth) {
+    localStorage.setItem('polar_config_pendiente_' + uid, '1');
+    return false;
+  }
+  try {
+    const { error } = await polarDb.auth.updateUser({ data: { config_elite: config } });
+    if (error) {
+      localStorage.setItem('polar_config_pendiente_' + uid, '1');
+      return false;
+    }
+    localStorage.removeItem('polar_config_pendiente_' + uid);
+    return true;
+  } catch (e) {
+    localStorage.setItem('polar_config_pendiente_' + uid, '1');
+    return false;
+  }
+}
+async function reintentarGuardarConfig() {
+  const ok = await sincronizarConfigNube();
+  mostrarEstadoConfig(ok ? 'Configuración subida a tu cuenta.' : 'Sigue sin poder subirse. Revisa tu internet y reintenta.', !ok);
+  return ok;
+}
+function leerCampoNumero(id) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  return numeroONull(el.value);
+}
+function aplicarEsquemaEnMemoria() {
+  config.peso = leerCampoNumero('cfg-peso');
+  config.toujeo = leerCampoNumero('cfg-toujeo');
+  config.telEmergencia = (document.getElementById('cfg-tel-emergencia').value || '').trim();
+  config.contactoNombre = (document.getElementById('cfg-contacto-nombre').value || '').trim();
+  config.contactoTelefono = (document.getElementById('cfg-tel-contacto').value || '').trim();
+  if (!config.fc || typeof config.fc !== 'object') config.fc = {};
+  config.fc.desayuno = leerCampoNumero('cfg-fc-desayuno');
+  config.fc.mam = leerCampoNumero('cfg-fc-mam');
+  config.fc.almuerzo = leerCampoNumero('cfg-fc-alm');
+  config.fc.mpm = leerCampoNumero('cfg-fc-mpm');
+  config.fc.cena = leerCampoNumero('cfg-fc-cena');
+  config.fc.corroborar = leerCampoNumero('cfg-fc-corroborar');
+  if (config.fc.corroborar === null && numeroPresente(config.fc.desayuno)) config.fc.corroborar = config.fc.desayuno;
+  if (!config.metas) config.metas = {};
+  config.metas.antes = leerCampoNumero('cfg-meta-antes');
+  config.metas.correccion = leerCampoNumero('cfg-meta-cor');
+  if (!config.ratios) config.ratios = {};
+  config.ratios.desayuno = leerCampoNumero('cfg-r-desayuno');
+  config.ratios.mam = leerCampoNumero('cfg-r-mam');
+  config.ratios.almuerzo = leerCampoNumero('cfg-r-alm');
+  config.ratios.mpm = leerCampoNumero('cfg-r-mpm');
+  config.ratios.cena = leerCampoNumero('cfg-r-cena');
+  config.ratios.corroborar = 0;
+  config.factorGrasas = leerCampoNumero('cfg-factor-grasas');
+  config.setupCompleto = configTieneEsquema(config);
+  delete config.telPapa;
+}
+async function guardarConfig() {
+  aplicarEsquemaEnMemoria();
+  guardarConfigLocal();
+  pintarTodo();
+  const ok = await sincronizarConfigNube();
+  if (!ok) {
+    mostrarEstadoConfig('Se guardó en este teléfono, pero no pudimos subirlo a tu cuenta. Reintenta.', true);
+    alert('Se guardó en este teléfono, pero no pudimos subirlo a tu cuenta. Reintenta.');
+    if (!config.setupCompleto) switchTab('setup');
+    else switchTab('config');
+    return;
+  }
+  mostrarEstadoConfig('', false);
+  switchTab(config.setupCompleto ? 'home' : 'setup');
+  alert('Configuración guardada.');
+}
+async function guardarPrimeraConfig() {
+  const err = document.getElementById('setup-error');
+  const mostrar = (m) => { if (err) { err.style.display = 'block'; err.textContent = m; } };
+  if (err) err.style.display = 'none';
+  const campos = [
+    ['desayuno', 'setup-r-desayuno'],
+    ['mpm', 'setup-r-colacion'],
+    ['almuerzo', 'setup-r-almuerzo'],
+    ['mam', 'setup-r-once'],
+    ['cena', 'setup-r-cena']
+  ];
+  const ratios = {};
+  for (let i = 0; i < campos.length; i++) {
+    const n = leerCampoNumero(campos[i][1]);
+    if (n === null || n < 0) { mostrar('Escribe el ratio de ' + NOMBRES_COMIDA[campos[i][0]] + '.'); return; }
+    ratios[campos[i][0]] = n;
+  }
+  const fc = leerCampoNumero('setup-fc');
+  if (fc === null || fc <= 0) { mostrar('Escribe el factor de sensibilidad, mayor que 0.'); return; }
+  const antes = leerCampoNumero('setup-meta-antes');
+  const cor = leerCampoNumero('setup-meta-cor');
+  if (antes === null || antes <= 0 || cor === null || cor <= 0) { mostrar('Escribe tus metas de glucosa.'); return; }
+  const acepto = document.getElementById('setup-acepto');
+  if (!acepto || !acepto.checked) { mostrar('Acepta el aviso para continuar.'); return; }
+  config.ratios.desayuno = ratios.desayuno;
+  config.ratios.mam = ratios.mam;
+  config.ratios.almuerzo = ratios.almuerzo;
+  config.ratios.mpm = ratios.mpm;
+  config.ratios.cena = ratios.cena;
+  config.ratios.corroborar = 0;
+  ['desayuno', 'mam', 'almuerzo', 'mpm', 'cena', 'corroborar'].forEach((k) => { config.fc[k] = fc; });
+  config.metas.antes = antes;
+  config.metas.correccion = cor;
+  config.toujeo = leerCampoNumero('setup-toujeo');
+  config.contactoNombre = (document.getElementById('setup-contacto-nombre').value || '').trim();
+  config.contactoTelefono = (document.getElementById('setup-contacto-tel').value || '').trim();
+  config.aceptoAviso = true;
+  config.setupCompleto = configTieneEsquema(config);
+  guardarConfigLocal();
+  pintarTodo();
+  const ok = await sincronizarConfigNube();
+  switchTab('home');
+  if (!ok) {
+    mostrarEstadoConfig('Se guardó en este teléfono, pero no pudimos subirlo a tu cuenta. Reintenta.', true);
+    alert('Se guardó en este teléfono, pero no pudimos subirlo a tu cuenta. Puedes reintentar en Configuración.');
+  }
 }
 
 function actualizarDropdownMetas() {
   const select = document.getElementById('meta');
   if (!select) return;
-  const antes = config.metas.antes;
-  const cor = config.metas.correccion;
-  
+  const antes = numeroONull(config.metas && config.metas.antes);
+  const cor = numeroONull(config.metas && config.metas.correccion);
+  if (antes === null || cor === null) {
+    select.innerHTML = '<option value="">Configura tus metas</option>';
+    return;
+  }
   select.innerHTML = `
     <option value="${antes}">Antes de comer (${antes})</option>
     <option value="${cor}">Corrección (${cor})</option>
@@ -1227,7 +1879,7 @@ function actualizarDropdownMetas() {
 }
 
 function determinarComidaAutomatica() {
-  const historial = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+  const historial = leerHistorial();
   const hoyIso = obtenerFechaLocalISO();
   const registrosHoy = historial.filter(r => r.iso === hoyIso);
 
@@ -1271,38 +1923,38 @@ function autoSeleccionarComida() {
 
 function actualizarTextosComida() {
   const s = document.getElementById('comida');
+  if (!s) return;
   const ratioDes = document.getElementById('cfg-r-desayuno') ? document.getElementById('cfg-r-desayuno').value : config.ratios.desayuno;
   const ratioMam = document.getElementById('cfg-r-mam') ? document.getElementById('cfg-r-mam').value : config.ratios.mam;
   const ratioAlm = document.getElementById('cfg-r-alm') ? document.getElementById('cfg-r-alm').value : config.ratios.almuerzo;
   const ratioMpm = document.getElementById('cfg-r-mpm') ? document.getElementById('cfg-r-mpm').value : config.ratios.mpm;
   const ratioCena = document.getElementById('cfg-r-cena') ? document.getElementById('cfg-r-cena').value : config.ratios.cena;
 
+  const etiqueta = (v) => (v === null || v === undefined || v === '') ? '—' : v;
   const textoOpcion = {
-    desayuno: `DESAYUNO (R${ratioDes})`,
-    mpm: `COLACIÓN (R${ratioMpm})`,
-    almuerzo: `ALMUERZO (R${ratioAlm})`,
-    mam: `ONCE (R${ratioMam})`,
-    cena: `CENA (R${ratioCena})`,
-    corroborar: `CORROBORAR (SOLO CORRECCIÓN)`
+    desayuno: `DESAYUNO (R${etiqueta(ratioDes)})`,
+    mpm: `COLACIÓN (R${etiqueta(ratioMpm)})`,
+    almuerzo: `ALMUERZO (R${etiqueta(ratioAlm)})`,
+    mam: `ONCE (R${etiqueta(ratioMam)})`,
+    cena: `CENA (R${etiqueta(ratioCena)})`,
+    corroborar: 'CORROBORAR (SOLO CORRECCIÓN)'
   };
   Array.from(s.options).forEach(opt => {
     if (textoOpcion[opt.value]) opt.text = textoOpcion[opt.value];
   });
-  
+
   const meal = s.value;
   const inputActivo = document.getElementById(RATIO_INPUT_IDS[meal] || ('cfg-r-' + meal));
-  const valActivo = inputActivo ? inputActivo.value : (config.ratios[meal] || 0);
+  const valActivo = inputActivo ? inputActivo.value : (config.ratios[meal] == null ? '' : config.ratios[meal]);
   const labelCarbos = document.getElementById('label-carbos');
-  if (labelCarbos) { labelCarbos.innerHTML = meal === 'corroborar' ? 'Carbos (g)' : `Carbos (g) <span class="ratio-chip">R${valActivo}</span>`; }
-  
+  if (labelCarbos) { labelCarbos.innerHTML = meal === 'corroborar' ? 'Carbos (g)' : `Carbos (g) <span class="ratio-chip">R${etiqueta(valActivo)}</span>`; }
+
   const selectMeta = document.getElementById('meta');
-  if(selectMeta) {
-    if (meal === 'corroborar') {
-      selectMeta.value = config.metas.correccion;
-    } else {
-      selectMeta.value = config.metas.antes;
-    }
+  if (selectMeta && config.metas) {
+    const metaElegida = meal === 'corroborar' ? config.metas.correccion : config.metas.antes;
+    if (numeroPresente(metaElegida)) selectMeta.value = String(metaElegida);
   }
+  actualizarAvisoCalculo();
 }
 
 function despertarPolar() { 
@@ -1339,16 +1991,17 @@ function guardarDosisAplicada(e, dosis, glucosa, carbos, tipoComida, carbosBase,
   const fecha = ahora.toLocaleString('es-CL'); 
   const isoFecha = obtenerFechaLocalISO(); 
 
-  let historial = JSON.parse(localStorage.getItem('historial_polar') || '[]'); 
+  let historial = leerHistorial(); 
   const regLocal = { fecha: fecha, iso: isoFecha, dosis: dosis, glucosa: glucosa, carbos: carbos, tipoComida: tipoComida, timestamp: ahora.getTime() };
   if (carbosBase !== null && carbosBase !== undefined) { regLocal.grasas = true; regLocal.carbosBase = carbosBase; regLocal.pctGrasas = pctGrasas; }
   historial.push(regLocal); 
-  localStorage.setItem('historial_polar', JSON.stringify(historial));
+  guardarHistorial(historial);
+  if (typeof revisarAvatares === 'function') revisarAvatares(true);
 
   const encolar = () => {
-      let colaSync = JSON.parse(localStorage.getItem('polar_cola_sync') || '[]');
+      let colaSync = leerCola();
       colaSync.push({ paciente_id: userId, glucosa: glucosa, carbos: carbos, dosis: dosis, tipo_comida: tipoComida, created_at: new Date().toISOString() });
-      localStorage.setItem('polar_cola_sync', JSON.stringify(colaSync));
+      guardarCola(colaSync);
   };
   if (!polarDb) { encolar(); } else
   polarDb.from('historial_polar').insert([
@@ -1356,9 +2009,9 @@ function guardarDosisAplicada(e, dosis, glucosa, carbos, tipoComida, carbosBase,
   ]).then(({ error }) => {
       if (error) throw error;
   }).catch((err) => {
-      let colaSync = JSON.parse(localStorage.getItem('polar_cola_sync') || '[]');
+      let colaSync = leerCola();
       colaSync.push({ paciente_id: userId, glucosa: glucosa, carbos: carbos, dosis: dosis, tipo_comida: tipoComida, created_at: new Date().toISOString() });
-      localStorage.setItem('polar_cola_sync', JSON.stringify(colaSync));
+      guardarCola(colaSync);
   });
 
   document.getElementById('glucosa').value = ''; 
@@ -1378,7 +2031,7 @@ function actualizarVistaHistorial() {
   const lista = document.getElementById('lista-historial'); 
   const filtroEl = document.getElementById('filtro-fecha-historial');
   const fechaFiltro = filtroEl ? filtroEl.value : '';
-  let historial = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+  let historial = leerHistorial();
   if (fechaFiltro) historial = historial.filter(item => item.iso === fechaFiltro);
   if (historial.length === 0) { 
     lista.innerHTML = fechaFiltro
@@ -1416,52 +2069,45 @@ function actualizarVistaHistorial() {
   lista.innerHTML = html + `<p style="font-size: 13px; text-align:center; color: var(--text-primary); font-weight: 800; margin-top: 18px;">Historial clínico protegido.</p>`;
 }
 
-async function borrarHistorialCompleto() { 
-  if(!confirm("⚠️ Alto líder. ¿Seguro que quieres borrar TODO el historial? Esta acción requiere confirmación de seguridad.")) return;
-  const pin = prompt("🔒 Introduce el código PIN familiar para autorizar el borrado total:");
-  if (pin !== "1234") { alert("❌ Código incorrecto. El historial está protegido."); return; }
+async function borrarHistorialCompleto() {
+  if (!confirm('¿Seguro que quieres borrar todo el historial?')) return;
+  const confirmacion = prompt('Para confirmar, escribe tu contraseña o la palabra BORRAR:');
+  if (confirmacion === null) return;
+  const texto = confirmacion.trim();
+  if (texto !== 'BORRAR') {
+    const email = localStorage.getItem('polar_rol');
+    if (!email || !texto || !polarDb) {
+      alert('Confirmación incorrecta. No se borró nada.');
+      return;
+    }
+    const { error } = await polarDb.auth.signInWithPassword({ email: email, password: texto });
+    if (error) {
+      alert('La contraseña no coincide. No se borró nada.');
+      return;
+    }
+  }
 
-  const hV = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+  const hV = leerHistorial();
   const userId = localStorage.getItem('polar_user_id');
 
-  if (userId) {
+  if (userId && polarDb) {
     const { error } = await polarDb
       .from('historial_polar')
       .delete()
       .eq('paciente_id', userId);
 
     if (error) {
-      console.error("Error al borrar en la nube:", error);
-      alert("Fallo en la conexión. No se pudo borrar de la nube.");
+      alert('No se pudo borrar en la cuenta. El historial sigue guardado.');
       return;
     }
   }
 
-  localStorage.removeItem('historial_polar'); 
-  actualizarVistaHistorial(); 
+  borrarClaveUsuario('historial_polar');
+  actualizarVistaHistorial();
   renderGraficoPicos();
   actualizarRadar();
   activarDeshacer('historial', hV);
-  alert("✅ Historial borrado.");
-}
-
-function sugerirEsquema() {
-  const h = JSON.parse(localStorage.getItem('historial_polar') || '[]'); 
-  if (h.length === 0) { alert("Registra datos primero, líder."); return; }
-  const ah = new Date(); 
-  const h2d = new Date(); 
-  h2d.setDate(ah.getDate() - 2); 
-  const ult = h.filter(i => { if (!i.iso) return false; return new Date(i.iso) >= h2d; });
-  if (ult.length === 0) { alert("No hay mediciones en los últimos 2 días."); return; }
-  let s = 0; let c = 0; 
-  ult.forEach(r => { if (r.glucosa && r.glucosa > 0) { s += Number(r.glucosa); c++; } }); 
-  if (c === 0) return;
-  const p = s / c; 
-  let m = "";
-  if (p > 180) m = `Promedio ALTO (${p.toFixed(0)}).\n\nSugerencia: Liderazgo aquí. Aumenta Toujeo en 1 o 2 U o ajusta ratios y factores de corrección. Revisa con médico.`;
-  else if (p < 80) m = `Promedio BAJO (${p.toFixed(0)}).\n\nSugerencia: Bajar Toujeo 1 o 2 U. Protege a la familia primero.`;
-  else m = `Promedio EXCELENTE (${p.toFixed(0)}).\n\nSugerencia: Estás dominando al 100%. Mantén el esquema.`;
-  alert(m);
+  alert('Historial borrado.');
 }
 
 function verificarCicloSemanal() {
@@ -1485,7 +2131,7 @@ function renderGraficoPicos() {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, width, height);
   
-  const historialCompleto = JSON.parse(localStorage.getItem('historial_polar') || '[]');
+  const historialCompleto = leerHistorial();
   let inicioSemana = verificarCicloSemanal();
 
   const isDarkBg = ['oscuro', 'halloween'].includes(config.tema);
@@ -1694,6 +2340,18 @@ function calcular(esNav = false) {
   const metaRestar = parseFloat(document.getElementById('meta').value);
   const tendenciaVal = document.getElementById('tendencia') ? document.getElementById('tendencia').value : 'estable';
 
+  const motivoCfg = motivoBloqueo(comidaKey);
+  if (motivoCfg) {
+    const intento = !esNav && (window.__polarCalculoBoton || glucosaInput !== '' || carbosInput !== '');
+    if (intento) mostrarBloqueoCalculo(comidaKey, motivoCfg);
+    else {
+      const resOculto = document.getElementById('resultado');
+      if (resOculto) resOculto.style.display = 'none';
+    }
+    actualizarAvisoCalculo();
+    return;
+  }
+
   if (glucosaInput === '' && carbosInput === '') {
       document.getElementById('resultado').style.display = 'none';
       return;
@@ -1791,7 +2449,9 @@ function calcular(esNav = false) {
       Corrección: <strong>${dosisCorreccion} U</strong> (Ideal: ${metaRestar} | FC: ${fc})
       ${ajusteTendencia}
       ${protocoloClinicoHTML}
-    </div>`;
+    </div>
+    <p class="aviso-dosis">${AVISO_MEDICO}</p>
+    `;
     
   resDiv.style.display = "block"; 
   despertarPolar(); 
@@ -1820,7 +2480,16 @@ panelMenu.addEventListener('mousemove', e => {
   }
 });
 
-['login-user', 'login-pass'].forEach(id => {
+[
+  ['login-user', 'validarAcceso'],
+  ['login-pass', 'validarAcceso'],
+  ['signup-email', 'crearCuenta'],
+  ['signup-pass', 'crearCuenta'],
+  ['signup-pass2', 'crearCuenta'],
+  ['reset-email', 'enviarRecuperacion'],
+  ['new-pass', 'guardarNuevaContrasena'],
+  ['new-pass2', 'guardarNuevaContrasena']
+].forEach(([id, fn]) => {
   const el = document.getElementById(id);
-  if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') validarAcceso(); });
+  if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') window[fn](); });
 });
